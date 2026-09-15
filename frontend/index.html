@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartVerify | Legal Metrology Verification System</title>
+  
+  <!-- Plus Jakarta Sans & Inter Fonts, Bootstrap Icons CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Top Government Identity Strip -->
+  <div class="gov-top-bar">
+    <div class="gov-flag">
+      <span class="tricolor-stripe"></span>
+      <span>Government of India &bull; Ministry of Consumer Affairs, Food & Public Distribution</span>
+    </div>
+    <div>
+      <span>Directorate of Legal Metrology &bull; Weights & Measures Statutory Registry</span>
+    </div>
+  </div>
+
+  <!-- Main Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="emblem-icon">
+        <i class="bi bi-shield-check"></i>
+      </div>
+      <div class="brand-text">
+        <h1>SmartVerify</h1>
+        <span>Weighing & Measuring Instruments &bull; Legal Metrology</span>
+      </div>
+    </div>
+
+    <!-- Navigation Links -->
+    <ul class="nav-links">
+      <li><a href="#home" data-view="home"><i class="bi bi-house-door"></i> Home</a></li>
+      <li><a href="#verify" data-view="public-verify"><i class="bi bi-qr-code-scan"></i> Verify Certificate</a></li>
+      <li><a href="#home#how-it-works"><i class="bi bi-info-circle"></i> How It Works</a></li>
+    </ul>
+
+    <!-- Action Buttons: Guest vs Authenticated User -->
+    <div class="nav-actions">
+      <!-- Guest Navigation -->
+      <div id="nav-guest-actions" style="display:flex; gap:10px; align-items:center;">
+        <button class="btn btn-outline" style="color:#FFFFFF; border-color:rgba(255,255,255,0.25); background:rgba(255,255,255,0.06);" onclick="Auth.openLoginModal()">
+          <i class="bi bi-box-arrow-in-right"></i> Sign In
+        </button>
+        <button class="btn btn-secondary" onclick="Auth.openRegisterModal()">
+          <i class="bi bi-person-plus-fill"></i> Register Owner
+        </button>
+      </div>
+
+      <!-- Authenticated Navigation -->
+      <div id="nav-user-actions" style="display:none; gap:12px; align-items:center;">
+        <button class="btn btn-secondary btn-sm" onclick="App.handleApplyClick()">
+          <i class="bi bi-send-check"></i> Apply for Verification
+        </button>
+        
+        <!-- Notifications Bell -->
+        <button class="notif-bell-btn" onclick="Notifications.openPanel()" title="View Notifications">
+          <i class="bi bi-bell-fill"></i>
+          <span class="notif-badge" id="notif-unread-badge" style="display:none;">0</span>
+        </button>
+
+        <!-- User Role Pill -->
+        <div class="user-pill">
+          <span class="user-role-tag" id="nav-user-role">OWNER</span>
+          <span class="user-name-label" id="nav-user-name">User</span>
+        </div>
+
+        <!-- Logout Button -->
+        <button class="btn-logout" onclick="Auth.logout()" title="Secure Logout">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- App Main Layout -->
+  <div class="app-container">
+
+    <!-- Role-Based Dashboard Sidebar (Visible when logged in) -->
+    <aside class="sidebar" id="app-sidebar" style="display:none;">
+      <div class="sidebar-header">
+        <div class="portal-title">METROLOGY PORTAL</div>
+      </div>
+      <ul class="sidebar-menu" id="sidebar-menu">
+        <!-- Injected dynamically by app.js based on user role -->
+      </ul>
+    </aside>
+
+    <!-- Main Dynamic Content Views -->
+    <main class="main-content">
+
+      <!-- ========================================================== -->
+      <!-- VIEW 1: Public Landing Page (#home)                       -->
+      <!-- ========================================================== -->
+      <div id="view-home" class="view-container">
+        <div class="hero-banner">
+          <div class="hero-content">
+            <div class="hero-eyebrow"><i class="bi bi-shield-check"></i> Legal Metrology Digital Registry</div>
+            <h1>SmartVerify</h1>
+            <p>
+              One secure place for statutory verification, field inspection, and digital certificate records.
+            </p>
+            <div class="hero-actions">
+              <button class="btn btn-secondary btn-lg" onclick="App.handleApplyClick()">
+                <i class="bi bi-send-check-fill"></i> Apply for Verification
+              </button>
+              <button class="btn btn-outline btn-lg" style="color:#FFFFFF; border-color:rgba(255,255,255,0.4); background:rgba(255,255,255,0.08);" onclick="App.navigate('public-verify')">
+                <i class="bi bi-qr-code"></i> Verify Certificate Online
+              </button>
+              <button class="btn btn-outline btn-lg" style="color:#FFFFFF; border-color:rgba(255,255,255,0.4); background:rgba(255,255,255,0.08);" onclick="Auth.openRegisterModal()">
+                <i class="bi bi-person-plus"></i> Register Business Profile
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <section class="quick-verify" aria-label="Certificate verification">
+          <div class="quick-verify-label">
+            <i class="bi bi-qr-code-scan"></i>
+            <div><strong>Certificate verification</strong><span>Check a certificate number</span></div>
+          </div>
+          <div class="quick-verify-form">
+            <input type="text" id="public-search-cert" class="form-control" placeholder="e.g. CERT-2026-000001" onkeydown="if(event.key==='Enter') Certificates.verifyPublic()" />
+            <button class="btn btn-secondary" onclick="Certificates.verifyPublic()">
+              <i class="bi bi-check-circle-fill"></i> Verify
+            </button>
+          </div>
+          <div id="home-public-verify-results" style="margin-top:14px;"></div>
+        </section>
+
+        <!-- 8-Step Statutory Verification Workflow Guide -->
+        <section class="workflow-section" id="how-it-works">
+          <div class="section-title">
+            <h2>Statutory Verification Workflow</h2>
+            <p>End-to-end digital lifecycle conforming to Legal Metrology General Rules</p>
+          </div>
+
+          <div class="workflow-grid">
+            <div class="workflow-card">
+              <div class="workflow-num">1</div>
+              <h3>Register Instrument</h3>
+              <p>Enter instrument technical details; backend atomically generates permanent sequential serial (e.g. <code>OVS-000001</code>).</p>
+            </div>
+            <div class="workflow-card">
+              <div class="workflow-num">2</div>
+              <h3>Apply for Verification</h3>
+              <p>5-step application referencing database ID with precise installation address and inspection district.</p>
+            </div>
+            <div class="workflow-card">
+              <div class="workflow-num">3</div>
+              <h3>Upload Documents</h3>
+              <p>Upload previous calibration certificates, invoices, or identity proof with strict 5MB server validation.</p>
+            </div>
+            <div class="workflow-card">
+              <div class="workflow-num">4</div>
+              <h3>District Assignment</h3>
+              <p>System automatically identifies active officers in the same district and assigns officer with lowest workload.</p>
+            </div>
+            <div class="workflow-card">
+              <div class="workflow-num">5</div>
+              <h3>Inspection Scheduling</h3>
+              <p>Officer schedules date and location; persistent notifications notify applicant immediately.</p>
+            </div>
+            <div class="workflow-card">
+              <div class="workflow-num">6</div>
+              <h3>Digital Field Test</h3>
+              <p>Officer enters test point readings in native units; automatic error calculations evaluate PASS/FAIL tolerances.</p>
+            </div>
+            <div class="workflow-card">
+              <div class="workflow-num">7</div>
+              <h3>Digital Certificate</h3>
+              <p>Officer approves verification; PDFKit generates official high-resolution statutory certificate with security hash.</p>
+            </div>
+            <div class="workflow-card">
+              <div class="workflow-num">8</div>
+              <h3>Public QR Verification</h3>
+              <p>Anyone can scan the certificate QR code or search publicly to verify real-time statutory status without login.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 2: Owner Dashboard (#owner-dashboard)                -->
+      <!-- ========================================================== -->
+      <div id="view-owner-dashboard" class="view-container" style="display:none;">
+        <div class="card-header" style="border:none; padding:0 0 20px 0; background:transparent;">
+          <div>
+            <h2><i class="bi bi-speedometer2"></i> Owner Metrology Dashboard</h2>
+            <p style="color:var(--text-muted); font-size:0.85rem;">Live statutory statistics from your registered equipment inventory</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-outline" onclick="Instruments.openRegisterModal()">
+              <i class="bi bi-plus-circle"></i> Register Instrument
+            </button>
+            <button class="btn btn-primary" onclick="Applications.openNewWizard()">
+              <i class="bi bi-send-check"></i> New Verification
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Database Metric Stats -->
+        <div id="owner-stats-container"></div>
+
+        <!-- Recent Registered Instruments Table -->
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-scale"></i> My Registered Instruments</h3>
+            <button class="btn btn-outline btn-sm" onclick="App.navigate('instruments')">View All</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="dashboard-instruments-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 3: Officer Dashboard (#officer-dashboard)            -->
+      <!-- ========================================================== -->
+      <div id="view-officer-dashboard" class="view-container" style="display:none;">
+        <div class="card-header" style="border:none; padding:0 0 20px 0; background:transparent;">
+          <div>
+            <h2><i class="bi bi-person-badge-fill"></i> Legal Metrology Officer Portal</h2>
+            <p style="color:var(--text-muted); font-size:0.85rem;">Jurisdictional inspection queue and statutory verification tasks</p>
+          </div>
+        </div>
+
+        <!-- Officer Live Assigned Stats -->
+        <div id="officer-stats-container"></div>
+
+        <!-- Assigned Applications Queue -->
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-inbox-fill"></i> Assigned Verification Applications</h3>
+            <button class="btn btn-outline btn-sm" onclick="App.navigate('applications')">View All Applications</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="officer-assigned-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 4: Admin Central Dashboard (#admin-dashboard)        -->
+      <!-- ========================================================== -->
+      <div id="view-admin-dashboard" class="view-container" style="display:none;">
+        <div class="card-header" style="border:none; padding:0 0 20px 0; background:transparent;">
+          <div>
+            <h2><i class="bi bi-building-gear"></i> Central Administration Directorate</h2>
+            <p style="color:var(--text-muted); font-size:0.85rem;">Real-time PostgreSQL system analytics and statutory audit activity</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary" onclick="Admin.openCreateOfficerModal()">
+              <i class="bi bi-person-plus-fill"></i> Create Officer
+            </button>
+            <button class="btn btn-outline" onclick="Admin.openAddDistrictModal()">
+              <i class="bi bi-geo-alt"></i> Add District
+            </button>
+          </div>
+        </div>
+
+        <!-- Admin Live Metrics -->
+        <div id="admin-stats-container"></div>
+
+        <!-- Recent Audit Logs -->
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-journal-text"></i> Live Statutory Audit Log Trail</h3>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="admin-recent-logs-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 5: Instruments List (#instruments)                   -->
+      <!-- ========================================================== -->
+      <div id="view-instruments" class="view-container" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-scale"></i> Weighing & Measuring Instruments Registry</h3>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="text" class="form-control form-control-sm" placeholder="Search serial / type..." oninput="Instruments.loadInstruments(this.value)" style="width:220px;" />
+              ${
+                Auth.getRole() === 'owner'
+                  ? `<button class="btn btn-primary btn-sm" onclick="Instruments.openRegisterModal()"><i class="bi bi-plus-circle"></i> Register Instrument</button>`
+                  : ''
+              }
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="instruments-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 6: Applications List (#applications)                 -->
+      <!-- ========================================================== -->
+      <div id="view-applications" class="view-container" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-file-earmark-text"></i> Verification Applications Queue</h3>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="text" class="form-control form-control-sm" placeholder="Search application ref..." oninput="Applications.loadApplications(this.value)" style="width:220px;" />
+              ${
+                Auth.getRole() === 'owner'
+                  ? `<button class="btn btn-primary btn-sm" onclick="Applications.openNewWizard()"><i class="bi bi-send-check"></i> New Application</button>`
+                  : ''
+              }
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="applications-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 7: Field Inspections (#inspections)                  -->
+      <!-- ========================================================== -->
+      <div id="view-inspections" class="view-container" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-clipboard-check"></i> Field Verification Inspections</h3>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="inspections-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 8: Certificates List (#certificates)                 -->
+      <!-- ========================================================== -->
+      <div id="view-certificates" class="view-container" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-award"></i> Verification Certificates Registry</h3>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="text" class="form-control form-control-sm" placeholder="Search certificate..." oninput="Certificates.loadCertificates(this.value)" style="width:220px;" />
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="certificates-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 9: Admin Users (#admin-users)                        -->
+      <!-- ========================================================== -->
+      <div id="view-admin-users" class="view-container" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-people"></i> Metrology Personnel & Owners Management</h3>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-primary btn-sm" onclick="Admin.openCreateOfficerModal()">
+                <i class="bi bi-person-plus-fill"></i> Create Officer
+              </button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="admin-users-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 10: Admin Districts (#admin-districts)               -->
+      <!-- ========================================================== -->
+      <div id="view-admin-districts" class="view-container" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="bi bi-geo-alt"></i> Master Metrology Districts Directory</h3>
+            <button class="btn btn-primary btn-sm" onclick="Admin.openAddDistrictModal()">
+              <i class="bi bi-plus-circle"></i> Add District
+            </button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="admin-districts-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- VIEW 11: Public QR Verification (#verify)                  -->
+      <!-- ========================================================== -->
+      <div id="view-public-verify" class="view-container" style="display:none;">
+        <div style="max-width:760px; margin:0 auto 30px;">
+          <h2 style="color:var(--primary); font-size:1.6rem; font-weight:800; margin-bottom:8px;">
+            <i class="bi bi-qr-code-scan"></i> Public Certificate Verification
+          </h2>
+          <p style="color:var(--text-muted); font-size:0.92rem; margin-bottom:20px;">
+            Verify statutory legal metrology compliance without logging in.
+          </p>
+          <div style="display:flex; gap:10px; background:#FFFFFF; padding:16px; border-radius:8px; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+            <input type="text" id="manual-verify-input" class="form-control" placeholder="Enter Certificate Number (e.g. CERT-2026-000001)" />
+            <button class="btn btn-primary" onclick="Certificates.verifyPublic(document.getElementById('manual-verify-input').value)">
+              <i class="bi bi-search"></i> Verify Certificate
+            </button>
+          </div>
+        </div>
+
+        <div id="public-verify-results-container"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Dynamic Modal Backdrop Container -->
+  <div id="modal-container"></div>
+
+  <!-- Dynamic Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Application Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/instruments.js"></script>
+  <script src="js/applications.js"></script>
+  <script src="js/inspections.js"></script>
+  <script src="js/certificates.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/officer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
