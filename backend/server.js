@@ -91,7 +91,7 @@ async function startServer() {
 
   console.log(`[Database Connected]: Connected to PostgreSQL database '${dbCheck.db}' at ${dbCheck.time}`);
 
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n===================================================================`);
     console.log(` Online Verification System for Weighing & Measuring Instruments`);
     console.log(` Server running at: http://localhost:${PORT}`);
