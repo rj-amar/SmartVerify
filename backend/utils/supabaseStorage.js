@@ -56,7 +56,17 @@ async function uploadFile(storagePath, buffer, contentType) {
 async function downloadFile(storagePath) {
   ensureConfigured();
 
-  const response = await fetch(objectUrl(storagePath), {
+  // Private buckets must be downloaded through the authenticated
+  // Storage endpoint. The plain object endpoint is for direct object
+  // operations; private downloads use the authenticated path.
+  const safePath = cleanStoragePath(storagePath)
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/');
+  const authenticatedUrl =
+    `${SUPABASE_URL}/storage/v1/object/authenticated/${encodeURIComponent(BUCKET)}/${safePath}`;
+
+  const response = await fetch(authenticatedUrl, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
