@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const db = require('../db/database');
 const { authenticateToken, requireRole } = require('../middleware/auth');
-const { uploadInspectionPhotos, photosDir, hasExpectedSignature } = require('../middleware/upload');
+const { uploadInspectionPhotos, hasExpectedSignature } = require('../middleware/upload');
+const { uploadFile, downloadFile } = require('../utils/supabaseStorage');
 const { logAudit } = require('../utils/audit');
 const { notifyUser } = require('../utils/notifications');
 
@@ -106,13 +106,14 @@ router.get('/photo/:filename', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
-    const filePath = path.join(photosDir, safeFilename);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, error: 'Physical image not found.' });
-    }
+    const storagePath = photo.file_path && !path.isAbsolute(photo.file_path) && photo.file_path.includes('/')
+      ? photo.file_path.replace(/\\/g, '/')
+      : `inspection-photos/${safeFilename}`;
+
+    const fileBuffer = await downloadFile(storagePath);
 
     res.setHeader('Content-Type', photo.mime_type);
-    return res.sendFile(filePath);
+    return res.send(fileBuffer);
   } catch (err) {
     console.error('[Photo Serve Error]:', err);
     return res.status(500).json({ success: false, error: 'Failed to serve photo.' });
@@ -451,8 +452,7 @@ router.post('/:id/photos', authenticateToken, requireRole('officer', 'admin'), u
       });
     }
 
-    if (files.some(file => !hasExpectedSignature(file.path, file.mimetype))) {
-      files.forEach(file => { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); });
+    if (files.some(file => !hasExpectedSignature(file.buffer, file.mimetype))) {
       return res.status(422).json({ success: false, error: 'One or more uploaded files do not contain a valid image signature.' });
     }
 
@@ -463,18 +463,15 @@ router.post('/:id/photos', authenticateToken, requireRole('officer', 'admin'), u
     );
 
     if (inspRes.rows.length === 0) {
-      files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
       return res.status(404).json({ success: false, error: 'Inspection not found.' });
     }
 
     const inspection = inspRes.rows[0];
     if (req.user.role === 'officer' && inspection.assigned_officer_id !== req.user.id) {
-      files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
       return res.status(403).json({ success: false, error: 'Unauthorized.' });
     }
 
     if (inspection.status !== 'scheduled') {
-      files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
       return res.status(409).json({ success: false, error: 'Photos can only be added to a scheduled inspection.' });
     }
 
@@ -486,7 +483,6 @@ router.post('/:id/photos', authenticateToken, requireRole('officer', 'admin'), u
     const existingCount = parseInt(existingPhotosRes.rows[0].count, 10);
 
     if (existingCount + files.length > 10) {
-      files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
       return res.status(422).json({
         success: false,
         error: `Maximum 10 photos allowed per inspection. Currently already uploaded: ${existingCount}.`
@@ -494,30 +490,49 @@ router.post('/:id/photos', authenticateToken, requireRole('officer', 'admin'), u
     }
 
     const savedPhotos = [];
-    for (const file of files) {
-      const caption = req.body.caption || `Inspection photo ${existingCount + savedPhotos.length + 1}`;
-      const insertRes = await db.query(
-        `INSERT INTO inspection_photos (
-          inspection_id,
-          filename,
-          stored_filename,
-          file_path,
-          mime_type,
-          file_size,
-          caption
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING *`,
-        [
-          id,
-          file.originalname,
-          file.filename,
-          file.path,
-          file.mimetype,
-          file.size,
-          caption
-        ]
-      );
-      savedPhotos.push(insertRes.rows[0]);
+    const uploadedStoragePaths = [];
+    try {
+      for (const file of files) {
+        const storageFilename = file.filename || `insp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${path.extname(file.originalname).toLowerCase()}`;
+        const storagePath = `inspection-photos/${storageFilename}`;
+        const caption = req.body.caption || `Inspection photo ${existingCount + savedPhotos.length + 1}`;
+
+        await uploadFile(storagePath, file.buffer, file.mimetype);
+        uploadedStoragePaths.push(storagePath);
+
+        const insertRes = await db.query(
+          `INSERT INTO inspection_photos (
+            inspection_id,
+            filename,
+            stored_filename,
+            file_path,
+            mime_type,
+            file_size,
+            caption
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING *`,
+          [
+            id,
+            file.originalname,
+            storageFilename,
+            storagePath,
+            file.mimetype,
+            file.size,
+            caption
+          ]
+        );
+        savedPhotos.push(insertRes.rows[0]);
+      }
+    } catch (uploadError) {
+      for (const storagePath of uploadedStoragePaths) {
+        try {
+          const { deleteFile } = require('../utils/supabaseStorage');
+          await deleteFile(storagePath);
+        } catch (cleanupError) {
+          console.error('[Inspection Photo Storage Cleanup Error]:', cleanupError);
+        }
+      }
+      throw uploadError;
     }
 
     return res.status(201).json({

@@ -167,6 +167,24 @@ const App = {
         sidebar.style.display = 'flex';
         this.renderSidebarMenu(role);
       }
+
+      // Role-aware action buttons for shared list views. These used to be
+      // written as template expressions directly inside static index.html,
+      // which caused the raw `${...}` text to appear in the browser.
+      const instrumentActions = document.getElementById('instruments-header-actions');
+      const applicationActions = document.getElementById('applications-header-actions');
+
+      if (instrumentActions) {
+        instrumentActions.innerHTML = role === 'owner'
+          ? `<button class="btn btn-primary btn-sm" onclick="Instruments.openRegisterModal()"><i class="bi bi-plus-circle"></i> Register Instrument</button>`
+          : '';
+      }
+
+      if (applicationActions) {
+        applicationActions.innerHTML = role === 'owner'
+          ? `<button class="btn btn-primary btn-sm" onclick="Applications.openNewWizard()"><i class="bi bi-send-check"></i> New Application</button>`
+          : '';
+      }
     } else {
       if (guestNav) guestNav.style.display = 'flex';
       if (userNav) userNav.style.display = 'none';

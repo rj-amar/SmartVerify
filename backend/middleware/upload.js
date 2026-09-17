@@ -1,23 +1,14 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
-// Upload storage
-// Vercel allows temporary file storage only in /tmp.
-// Local development continues to use backend/uploads.
-const uploadRoot = process.env.VERCEL
-  ? path.join('/tmp', 'smartverify-uploads')
-  : path.join(__dirname, '..', 'uploads');
-
-const docsDir = path.join(uploadRoot, 'documents');
-const photosDir = path.join(uploadRoot, 'inspection-photos');
-const certsDir = path.join(uploadRoot, 'certificates');
-
-[docsDir, photosDir, certsDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
+// Documents and inspection photos are stored permanently in Supabase Storage.
+// Certificates may still be generated temporarily on the server and are cleaned up.
+const certsDir = path.join(os.tmpdir(), 'smartverify-certificates');
+if (!fs.existsSync(certsDir)) {
+  fs.mkdirSync(certsDir, { recursive: true });
+}
 
 // Allowed MIME types
 const ALLOWED_DOC_MIMES = [
@@ -35,8 +26,11 @@ const ALLOWED_PHOTO_MIMES = [
   'image/webp'
 ];
 
-function hasExpectedSignature(filePath, mimeType) {
-  const header = fs.readFileSync(filePath).subarray(0, 12);
+function hasExpectedSignature(fileOrBuffer, mimeType) {
+  const header = Buffer.isBuffer(fileOrBuffer)
+    ? fileOrBuffer.subarray(0, 12)
+    : fs.readFileSync(fileOrBuffer).subarray(0, 12);
+
   const startsWith = (...bytes) => bytes.every((byte, index) => header[index] === byte);
 
   if (mimeType === 'application/pdf') return startsWith(0x25, 0x50, 0x44, 0x46, 0x2D);
@@ -46,35 +40,14 @@ function hasExpectedSignature(filePath, mimeType) {
   return false;
 }
 
-// Document storage engine
-const docStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, docsDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safeName = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
-    cb(null, safeName);
-  }
-});
+// Keep files in memory only long enough to upload them to Supabase Storage.
+// This avoids relying on Vercel's temporary project filesystem.
+const memoryStorage = multer.memoryStorage();
 
-// Inspection photo storage engine
-const photoStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, photosDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safeName = `insp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
-    cb(null, safeName);
-  }
-});
-
-// Document upload multer instance
 const uploadDocument = multer({
-  storage: docStorage,
+  storage: memoryStorage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5 MB per file
+    fileSize: 5 * 1024 * 1024
   },
   fileFilter: (req, file, cb) => {
     if (ALLOWED_DOC_MIMES.includes(file.mimetype)) {
@@ -85,11 +58,10 @@ const uploadDocument = multer({
   }
 });
 
-// Photo upload multer instance (up to 10 photos)
 const uploadInspectionPhotos = multer({
-  storage: photoStorage,
+  storage: memoryStorage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5 MB per photo
+    fileSize: 5 * 1024 * 1024
   },
   fileFilter: (req, file, cb) => {
     if (ALLOWED_PHOTO_MIMES.includes(file.mimetype)) {
@@ -100,7 +72,6 @@ const uploadInspectionPhotos = multer({
   }
 });
 
-// Middleware helper to handle multer errors gracefully without crashing or logging out
 function handleMulterError(multerUpload) {
   return (req, res, next) => {
     multerUpload(req, res, (err) => {
@@ -135,8 +106,7 @@ function handleMulterError(multerUpload) {
 module.exports = {
   uploadDocument: handleMulterError(uploadDocument.single('document')),
   uploadInspectionPhotos: handleMulterError(uploadInspectionPhotos.array('photos', 10)),
-  docsDir,
-  photosDir,
+  // Kept for certificate generation compatibility.
   certsDir,
   hasExpectedSignature
 };

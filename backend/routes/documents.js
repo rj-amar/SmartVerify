@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const db = require('../db/database');
 const { authenticateToken, requireRole } = require('../middleware/auth');
-const { uploadDocument, docsDir, hasExpectedSignature } = require('../middleware/upload');
+const { uploadDocument, hasExpectedSignature } = require('../middleware/upload');
+const { uploadFile, downloadFile } = require('../utils/supabaseStorage');
 const { logAudit } = require('../utils/audit');
 const { notifyUser } = require('../utils/notifications');
 
@@ -39,14 +39,15 @@ router.get('/file/:filename', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
-    const filePath = path.join(docsDir, safeFilename);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, error: 'Physical file not found.' });
-    }
+    const storagePath = doc.file_path && !path.isAbsolute(doc.file_path) && doc.file_path.includes('/')
+      ? doc.file_path.replace(/\\/g, '/')
+      : `documents/${safeFilename}`;
+
+    const fileBuffer = await downloadFile(storagePath);
 
     res.setHeader('Content-Type', doc.mime_type);
     res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(doc.original_filename)}`);
-    return res.sendFile(filePath);
+    return res.send(fileBuffer);
   } catch (err) {
     console.error('[Document Serve Error]:', err);
     return res.status(500).json({ success: false, error: 'Failed to retrieve file.' });
@@ -113,14 +114,11 @@ router.post('/:applicationId/upload', authenticateToken, requireRole('owner', 'a
       });
     }
 
-    if (!hasExpectedSignature(file.path, file.mimetype)) {
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    if (!hasExpectedSignature(file.buffer, file.mimetype)) {
       return res.status(422).json({ success: false, error: 'The uploaded file content does not match its declared type.' });
     }
 
     if (!document_type) {
-      // Clean up uploaded file if validation fails
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       return res.status(422).json({
         success: false,
         error: 'Document type is required.'
@@ -134,40 +132,54 @@ router.post('/:applicationId/upload', authenticateToken, requireRole('owner', 'a
     );
 
     if (appRes.rows.length === 0) {
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       return res.status(404).json({ success: false, error: 'Application not found.' });
     }
 
     const app = appRes.rows[0];
     if (user.role === 'owner' && app.applicant_id !== user.id) {
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
-    const insertRes = await db.query(
-      `INSERT INTO documents (
-        application_id,
-        uploaded_by,
-        document_type,
-        original_filename,
-        stored_filename,
-        file_path,
-        mime_type,
-        file_size,
-        verification_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
-      RETURNING *`,
-      [
-        applicationId,
-        user.id,
-        document_type.trim(),
-        file.originalname,
-        file.filename,
-        file.path,
-        file.mimetype,
-        file.size
-      ]
-    );
+    const storageFilename = file.filename || `doc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${path.extname(file.originalname).toLowerCase()}`;
+    const storagePath = `documents/${storageFilename}`;
+
+    await uploadFile(storagePath, file.buffer, file.mimetype);
+
+    let insertRes;
+    try {
+      insertRes = await db.query(
+        `INSERT INTO documents (
+          application_id,
+          uploaded_by,
+          document_type,
+          original_filename,
+          stored_filename,
+          file_path,
+          mime_type,
+          file_size,
+          verification_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+        RETURNING *`,
+        [
+          applicationId,
+          user.id,
+          document_type.trim(),
+          file.originalname,
+          storageFilename,
+          storagePath,
+          file.mimetype,
+          file.size
+        ]
+      );
+    } catch (dbError) {
+      try {
+        const { deleteFile } = require('../utils/supabaseStorage');
+        await deleteFile(storagePath);
+      } catch (cleanupError) {
+        console.error('[Document Storage Cleanup Error]:', cleanupError);
+      }
+      throw dbError;
+    }
 
     const doc = insertRes.rows[0];
 
