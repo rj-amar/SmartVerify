@@ -191,40 +191,131 @@ router.get('/pdf/:identifier', authenticateToken, async (req, res) => {
     const { identifier } = req.params;
     const user = req.user;
 
+    // Get certificate data from the permanent database.
     const certRes = await db.query(
-      `SELECT c.*, i.owner_id, a.assigned_officer_id
+      `SELECT
+        c.*,
+        a.application_number,
+        a.assigned_officer_id,
+        i.system_serial_number,
+        i.instrument_type,
+        i.category AS instrument_category,
+        i.manufacturer,
+        i.model_number,
+        i.capacity,
+        i.accuracy_class,
+        i.unit_of_measurement,
+        i.installation_place,
+        i.installation_address,
+        u.id AS owner_id,
+        u.full_name AS owner_name,
+        u.business_name,
+        off.full_name AS officer_name,
+        off.district AS officer_district
        FROM certificates c
-       JOIN instruments i ON c.instrument_id = i.id
        JOIN applications a ON c.application_id = a.id
+       JOIN instruments i ON c.instrument_id = i.id
+       JOIN users u ON i.owner_id = u.id
+       JOIN users off ON c.issued_by = off.id
        WHERE c.certificate_number = $1 OR c.id::text = $1`,
       [identifier]
     );
 
     if (certRes.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Certificate not found.' });
+      return res.status(404).json({
+        success: false,
+        error: 'Certificate not found.'
+      });
     }
 
     const cert = certRes.rows[0];
 
     // Authorization
     if (user.role === 'owner' && cert.owner_id !== user.id) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
-    }
-    if (user.role === 'officer' && cert.assigned_officer_id !== user.id && cert.issued_by !== user.id) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
-    }
-
-    const filePath = cert.pdf_path;
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, error: 'Certificate PDF file not found on server.' });
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied.'
+      });
     }
 
+    if (
+      user.role === 'officer' &&
+      cert.assigned_officer_id !== user.id &&
+      cert.issued_by !== user.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied.'
+      });
+    }
+
+    // Vercel only provides temporary writable storage in /tmp.
+    // Regenerate the certificate from database data instead of
+    // trying to read the old local uploads/certificates path.
+    const tempPdfPath = path.join(
+      '/tmp',
+      `certificate_${cert.certificate_number}_${Date.now()}.pdf`
+    );
+
+    const baseUrl =
+      process.env.APP_BASE_URL ||
+      'https://smart-verify-eight.vercel.app';
+
+    const verifyUrl =
+      `${baseUrl}/#verify?code=${cert.certificate_number}`;
+
+    await generateCertificatePDF(
+      {
+        certificateNumber: cert.certificate_number,
+        applicationNumber: cert.application_number,
+        systemSerialNumber: cert.system_serial_number,
+        instrumentType: cert.instrument_type,
+        manufacturer: cert.manufacturer,
+        modelNumber: cert.model_number,
+        capacity: cert.capacity,
+        accuracyClass: cert.accuracy_class,
+        unit: cert.unit_of_measurement,
+        ownerName: cert.owner_name,
+        businessName: cert.business_name,
+        installationAddress:
+          cert.installation_address || cert.installation_place,
+        verificationDate: cert.issue_date,
+        expiryDate: cert.expiry_date,
+        officerName: cert.officer_name,
+        officerDistrict: cert.officer_district,
+        status: cert.certificate_status,
+        verifyUrl
+      },
+      tempPdfPath
+    );
+
+    // Send the freshly generated PDF to the browser.
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${cert.pdf_filename || `certificate_${cert.certificate_number}.pdf`}"`);
-    return res.sendFile(filePath);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${cert.pdf_filename || `certificate_${cert.certificate_number}.pdf`}"`
+    );
+
+    return res.sendFile(tempPdfPath, (err) => {
+      // Clean up the temporary Vercel file after sending it.
+      try {
+        if (fs.existsSync(tempPdfPath)) {
+          fs.unlinkSync(tempPdfPath);
+        }
+      } catch (cleanupError) {
+        console.error('[Certificate PDF Cleanup Error]:', cleanupError);
+      }
+
+      if (err) {
+        console.error('[Certificate PDF Send Error]:', err);
+      }
+    });
   } catch (err) {
     console.error('[Certificate PDF Error]:', err);
-    return res.status(500).json({ success: false, error: 'Failed to download certificate PDF.' });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to generate certificate PDF.'
+    });
   }
 });
 
