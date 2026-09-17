@@ -8,8 +8,13 @@ const { testConnection } = require('./db/database');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
 const defaultOrigin = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
-const allowedOrigins = (process.env.CORS_ORIGINS || defaultOrigin).split(',').map(origin => origin.trim()).filter(Boolean);
+const allowedOrigins = [
+  ...((process.env.CORS_ORIGINS || '').split(',').map(origin => origin.trim()).filter(Boolean)),
+  defaultOrigin,
+  vercelOrigin
+].filter(Boolean);
 
 app.disable('x-powered-by');
 app.use((req, res, next) => {
@@ -82,7 +87,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Startup Verification
+// Local development startup only.
+// On Vercel, the exported Express app is managed by the platform.
 async function startServer() {
   const dbCheck = await testConnection();
   if (!dbCheck.success) {
@@ -102,6 +108,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;
