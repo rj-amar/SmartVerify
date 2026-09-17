@@ -113,7 +113,7 @@ const OfficerDashboard = {
               }
               ${
                 a.status === 'inspection_completed'
-                  ? `<button class="btn btn-success btn-sm" onclick="Certificates.openApprovalModal(${a.id})"><i class="bi bi-patch-check"></i> Decide</button>`
+                  ? `<button class="btn btn-success btn-sm" onclick="openOfficerFinalDecision(${a.id})"><i class="bi bi-patch-check"></i> Decide</button>`
                   : ''
               }
               <button class="btn btn-outline btn-sm" style="margin-left:4px;" onclick="Applications.viewTrackingModal(${a.id})"><i class="bi bi-eye"></i></button>
@@ -150,3 +150,18 @@ const OfficerDashboard = {
   }
 };
 window.OfficerDashboard = OfficerDashboard;
+
+// Robust officer decision entry point used by dashboard action buttons.
+function openOfficerFinalDecision(applicationId) {
+  const id = Number(applicationId);
+  if (!Number.isFinite(id) || id <= 0) {
+    showToast('Invalid Application', 'Could not identify this application.', 'danger');
+    return;
+  }
+  if (!window.Certificates || typeof window.Certificates.openApprovalModal !== 'function') {
+    console.error('Certificates.openApprovalModal is unavailable.');
+    showToast('Decision Unavailable', 'Certificate module is still loading. Please refresh the page.', 'danger');
+    return;
+  }
+  window.Certificates.openApprovalModal(id);
+}

@@ -1,5 +1,6 @@
 /**
  * Online Verification System - Admin Management Module
+ * Central Directorate for Legal Metrology
  */
 
 const Admin = {
@@ -11,11 +12,24 @@ const Admin = {
     const statsContainer = document.getElementById('admin-stats-container');
     if (!statsContainer) return;
 
-    statsContainer.innerHTML = '<div class="empty-state"><i class="bi bi-arrow-repeat spin"></i><p>Aggregating live metrology metrics from PostgreSQL...</p></div>';
+    // Shimmer skeleton
+    statsContainer.innerHTML = `
+      <div class="stats-grid">
+        ${Array(6).fill(0).map(() => `
+          <div class="stat-card">
+            <div class="skeleton" style="width:50px; height:50px; border-radius:10px;"></div>
+            <div style="flex:1;">
+              <div class="skeleton skeleton-title" style="width:40px; margin-bottom:6px;"></div>
+              <div class="skeleton skeleton-text" style="width:110px;"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
 
     const res = await apiRequest('/admin/summary');
     if (!res.ok) {
-      statsContainer.innerHTML = `<div class="empty-state text-danger"><p>${res.data.error || 'Failed to load metrics.'}</p></div>`;
+      statsContainer.innerHTML = `<div class="empty-state text-danger"><p>${res.data?.error || 'Failed to load directorate metrics.'}</p></div>`;
       return;
     }
 
@@ -44,7 +58,7 @@ const Admin = {
           <div class="stat-icon warning"><i class="bi bi-hourglass-split"></i></div>
           <div class="stat-details">
             <h3>${s.pending_applications}</h3>
-            <p>Pending Applications</p>
+            <p>Pending Verification Applications</p>
           </div>
         </div>
 
@@ -52,7 +66,7 @@ const Admin = {
           <div class="stat-icon success"><i class="bi bi-patch-check-fill"></i></div>
           <div class="stat-details">
             <h3>${s.verified_applications}</h3>
-            <p>Verified & Certified Applications</p>
+            <p>Verified &amp; Certified Applications</p>
           </div>
         </div>
 
@@ -81,7 +95,7 @@ const Admin = {
       logsContainer.innerHTML = logs.length > 0
         ? `
           <div class="table-responsive">
-            <table class="table" style="font-size:0.82rem;">
+            <table class="table" style="font-size:0.84rem;">
               <thead>
                 <tr>
                   <th>Action</th>
@@ -94,9 +108,9 @@ const Admin = {
               <tbody>
                 ${logs.map(l => `
                   <tr>
-                    <td><strong style="color:var(--primary);">${l.action}</strong></td>
+                    <td><strong style="color:var(--navy-900);">${l.action}</strong></td>
                     <td><span class="badge badge-secondary">${l.entity_type}</span></td>
-                    <td>${l.user_name || 'System'} (${l.user_role || 'system'})</td>
+                    <td>${l.user_name || 'System'} <small style="color:var(--text-muted);">(${l.user_role || 'system'})</small></td>
                     <td>${formatDateTime(l.created_at)}</td>
                     <td style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${l.details || ''}">
                       ${l.details || 'N/A'}
@@ -115,7 +129,29 @@ const Admin = {
     const container = document.getElementById('admin-users-table-container');
     if (!container) return;
 
-    container.innerHTML = '<div class="empty-state"><i class="bi bi-arrow-repeat spin"></i><p>Loading users...</p></div>';
+    // Shimmer skeleton loading
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>User Name &amp; Email</th><th>Enterprise / Phone</th><th>Role</th><th>Assigned District</th><th>Status</th><th>Registered</th><th style="text-align:right;">Actions</th></tr>
+          </thead>
+          <tbody>
+            ${Array(5).fill(0).map(() => `
+              <tr class="skeleton-table-row">
+                <td><div class="skeleton skeleton-text" style="width:130px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:140px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:80px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:100px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:70px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:90px;"></div></td>
+                <td style="text-align:right;"><div class="skeleton skeleton-text" style="width:100px; margin-left:auto;"></div></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
 
     let url = '/admin/users?limit=100';
     if (roleFilter) url += `&role=${roleFilter}`;
@@ -123,7 +159,7 @@ const Admin = {
 
     const res = await apiRequest(url);
     if (!res.ok) {
-      container.innerHTML = `<div class="empty-state text-danger"><p>${res.data.error || 'Failed to load users.'}</p></div>`;
+      container.innerHTML = `<div class="empty-state text-danger"><p>${res.data?.error || 'Failed to load users.'}</p></div>`;
       return;
     }
 
@@ -136,14 +172,14 @@ const Admin = {
     if (!container) return;
 
     if (this.users.length === 0) {
-      container.innerHTML = '<div class="empty-state"><i class="bi bi-people"></i><h4>No users found.</h4></div>';
+      container.innerHTML = '<div class="empty-state"><i class="bi bi-people"></i><h4>No users found</h4></div>';
       return;
     }
 
     const rows = this.users.map(u => `
       <tr>
         <td>
-          <div style="font-weight:700; color:var(--primary);">${u.full_name}</div>
+          <div style="font-weight:700; color:var(--navy-900);">${u.full_name}</div>
           <small style="color:var(--text-muted);">${u.email}</small>
         </td>
         <td>
@@ -185,7 +221,7 @@ const Admin = {
         <table class="table">
           <thead>
             <tr>
-              <th>User Name & Email</th>
+              <th>User Name &amp; Email</th>
               <th>Enterprise / Phone</th>
               <th>Role</th>
               <th>Assigned District</th>
@@ -209,7 +245,7 @@ const Admin = {
       <div class="modal-backdrop" id="create-officer-modal" onclick="if(event.target===this) App.closeModal()">
         <div class="modal-dialog">
           <div class="modal-header">
-            <h3><i class="bi bi-person-plus-fill"></i> Create Legal Metrology Officer Account</h3>
+            <h3><i class="bi bi-person-plus-fill" style="color:var(--primary-blue);"></i> Create Legal Metrology Officer Account</h3>
             <button class="modal-close" onclick="App.closeModal()">&times;</button>
           </div>
           <form onsubmit="Admin.handleCreateOfficer(event)">
@@ -224,7 +260,7 @@ const Admin = {
                   <input type="email" id="off-email" class="form-control" placeholder="officer@metrology.gov.in" required />
                 </div>
                 <div class="form-group">
-                  <label>Phone Number <span class="required">*</span></label>
+                  <label>Mobile Number <span class="required">*</span></label>
                   <input type="tel" id="off-phone" class="form-control" placeholder="10-digit number" pattern="[6-9][0-9]{9}" required />
                 </div>
               </div>
@@ -249,7 +285,7 @@ const Admin = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-outline" onclick="App.closeModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary" id="btn-create-off">
+              <button type="submit" class="btn btn-secondary" id="btn-create-off">
                 <i class="bi bi-person-check-fill"></i> Create Officer
               </button>
             </div>
@@ -322,20 +358,20 @@ const Admin = {
       <div class="modal-backdrop" id="edit-officer-modal" onclick="if(event.target===this) App.closeModal()">
         <div class="modal-dialog">
           <div class="modal-header">
-            <h3><i class="bi bi-pencil-square"></i> Reassign Officer District: ${officer.full_name}</h3>
+            <h3><i class="bi bi-pencil-square" style="color:var(--primary-blue);"></i> Reassign District: ${officer.full_name}</h3>
             <button class="modal-close" onclick="App.closeModal()">&times;</button>
           </div>
           <form onsubmit="Admin.handleReassignDistrict(event, ${officerId})">
             <div class="modal-body">
               <div class="form-group">
                 <label>Assigned District <span class="required">*</span></label>
-                <input type="text" id="edit-off-district" class="form-control" value="${officer.district}" required />
+                <input type="text" id="edit-off-district" class="form-control" value="${escapeHtml(officer.district)}" required />
                 <div class="form-hint">District matching is case-insensitive (e.g. "Purnea")</div>
               </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-outline" onclick="App.closeModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary">Update District</button>
+              <button type="submit" class="btn btn-secondary">Update District</button>
             </div>
           </form>
         </div>
@@ -365,11 +401,30 @@ const Admin = {
     const container = document.getElementById('admin-districts-table-container');
     if (!container) return;
 
-    container.innerHTML = '<div class="empty-state"><i class="bi bi-arrow-repeat spin"></i><p>Loading master districts...</p></div>';
+    // Shimmer skeleton
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>District Name</th><th>State</th><th>Assigned Officers</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${Array(5).fill(0).map(() => `
+              <tr class="skeleton-table-row">
+                <td><div class="skeleton skeleton-text" style="width:120px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:120px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:100px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:70px;"></div></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
 
     const res = await apiRequest('/admin/districts');
     if (!res.ok) {
-      container.innerHTML = `<div class="empty-state text-danger"><p>${res.data.error || 'Failed to load districts.'}</p></div>`;
+      container.innerHTML = `<div class="empty-state text-danger"><p>${res.data?.error || 'Failed to load districts.'}</p></div>`;
       return;
     }
 
@@ -417,7 +472,7 @@ const Admin = {
       <div class="modal-backdrop" id="add-district-modal" onclick="if(event.target===this) App.closeModal()">
         <div class="modal-dialog">
           <div class="modal-header">
-            <h3><i class="bi bi-geo-alt-fill"></i> Add Master District</h3>
+            <h3><i class="bi bi-geo-alt-fill" style="color:var(--primary-blue);"></i> Add Master Metrology District</h3>
             <button class="modal-close" onclick="App.closeModal()">&times;</button>
           </div>
           <form onsubmit="Admin.handleAddDistrict(event)">
@@ -436,7 +491,7 @@ const Admin = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-outline" onclick="App.closeModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary">Add District</button>
+              <button type="submit" class="btn btn-secondary">Add District</button>
             </div>
           </form>
         </div>
@@ -465,4 +520,5 @@ const Admin = {
     }
   }
 };
+
 window.Admin = Admin;

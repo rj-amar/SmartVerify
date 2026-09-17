@@ -147,6 +147,19 @@ const Certificates = {
    * Officer Decision Modal (Approve or Reject)
    */
   openApprovalModal(applicationId) {
+    const id = Number(applicationId);
+    if (!Number.isFinite(id) || id <= 0) {
+      showToast('Invalid Application', 'Could not identify this application.', 'danger');
+      return;
+    }
+
+    const modalContainer = document.getElementById('modal-container');
+    if (!modalContainer) {
+      console.error('modal-container not found in the page.');
+      showToast('Decision Unavailable', 'The decision window could not be opened. Please refresh the page.', 'danger');
+      return;
+    }
+
     const modalHtml = `
       <div class="modal-backdrop" id="decision-modal" onclick="if(event.target===this) App.closeModal()">
         <div class="modal-dialog">
@@ -175,7 +188,7 @@ const Certificates = {
                   <option value="5">5 Years (Special Dispensation)</option>
                 </select>
               </div>
-              <button type="button" class="btn btn-success" id="btn-action-approve" onclick="Certificates.handleApprove(${applicationId})">
+              <button type="button" class="btn btn-success" id="btn-action-approve" onclick="Certificates.handleApprove(${id})">
                 <i class="bi bi-patch-check"></i> Approve & Generate Certificate
               </button>
             </div>
@@ -192,7 +205,7 @@ const Certificates = {
                 <label style="font-size:0.82rem;">Statutory Rejection Reason <span class="required">*</span></label>
                 <textarea id="app-reject-reason" class="form-control form-control-sm" rows="2" placeholder="Specify failure reason, exceeded error percentage, or physical defects."></textarea>
               </div>
-              <button type="button" class="btn btn-danger" id="btn-action-reject" onclick="Certificates.handleReject(${applicationId})">
+              <button type="button" class="btn btn-danger" id="btn-action-reject" onclick="Certificates.handleReject(${id})">
                 <i class="bi bi-x-circle"></i> Reject Application
               </button>
             </div>

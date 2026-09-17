@@ -1,5 +1,6 @@
 /**
  * Online Verification System - Notifications Module
+ * Real-Time Statutory Alerts & Updates
  */
 
 const Notifications = {
@@ -39,45 +40,53 @@ const Notifications = {
 
     const notifsHtml = this.list.length > 0
       ? this.list.map(n => `
-          <div style="padding:12px 14px; border-bottom:1px solid var(--border); background:${n.is_read ? '#FFFFFF' : '#F0F9FF'}; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <div style="padding:14px 18px; border-bottom:1px solid var(--border-color); background:${n.is_read ? '#FFFFFF' : '#F0F9FF'}; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; transition:var(--transition-fast);">
             <div style="flex:1;">
-              <div style="font-weight:700; font-size:0.88rem; color:${n.is_read ? 'var(--text-primary)' : 'var(--secondary)'}; display:flex; align-items:center; gap:6px;">
-                ${!n.is_read ? '<span style="width:8px; height:8px; border-radius:50%; background:var(--secondary); display:inline-block;"></span>' : ''}
+              <div style="font-weight:700; font-size:0.88rem; color:${n.is_read ? 'var(--text-primary)' : 'var(--primary-blue)'}; display:flex; align-items:center; gap:8px;">
+                ${!n.is_read ? '<span style="width:8px; height:8px; border-radius:50%; background:var(--primary-blue); display:inline-block; flex-shrink:0;"></span>' : ''}
                 ${n.title}
               </div>
-              <p style="font-size:0.82rem; color:var(--text-secondary); margin:4px 0 6px;">${n.message}</p>
-              <small style="font-size:0.72rem; color:var(--text-muted);"><i class="bi bi-clock"></i> ${formatDateTime(n.created_at)}</small>
+              <p style="font-size:0.84rem; color:var(--text-secondary); margin:4px 0 6px; line-height:1.5;">${n.message}</p>
+              <small style="font-size:0.74rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;"><i class="bi bi-clock"></i> ${formatDateTime(n.created_at)}</small>
             </div>
             ${
               !n.is_read
-                ? `<button class="btn btn-outline btn-sm" onclick="Notifications.markRead(${n.id})" title="Mark as Read" style="padding:2px 6px;">
-                    <i class="bi bi-check"></i>
+                ? `<button class="btn btn-outline btn-sm" onclick="Notifications.markRead(${n.id})" title="Mark as Read" style="padding:4px 8px; font-size:0.75rem;">
+                    <i class="bi bi-check2"></i> Read
                    </button>`
                 : ''
             }
           </div>
         `).join('')
-      : '<div class="empty-state"><i class="bi bi-bell-slash"></i><h4>No notifications</h4><p>You have no notifications at this time.</p></div>';
+      : `
+        <div class="empty-state" style="padding:36px 20px;">
+          <i class="bi bi-bell-slash"></i>
+          <h4>No notifications</h4>
+          <p>You are completely up to date with your metrology tasks.</p>
+        </div>
+      `;
 
     const modalHtml = `
       <div class="modal-backdrop" id="notif-modal" onclick="if(event.target===this) App.closeModal()">
-        <div class="modal-dialog" style="max-height:80vh;">
+        <div class="modal-dialog" style="max-height:85vh; max-width:560px;">
           <div class="modal-header">
-            <h3><i class="bi bi-bell-fill"></i> System Notifications (${this.unreadCount} Unread)</h3>
+            <h3><i class="bi bi-bell-fill" style="color:var(--primary-blue);"></i> Statutory Notifications (${this.unreadCount} Unread)</h3>
             <button class="modal-close" onclick="App.closeModal()">&times;</button>
           </div>
           <div class="modal-body" style="padding:0; max-height:480px; overflow-y:auto;">
             ${notifsHtml}
           </div>
           <div class="modal-footer" style="justify-content:space-between;">
-            ${
-              this.unreadCount > 0
-                ? `<button class="btn btn-outline btn-sm" onclick="Notifications.markAllRead()">
-                    <i class="bi bi-check-all"></i> Mark All as Read
-                   </button>`
-                : '<div></div>'
-            }
-            <button class="btn btn-primary btn-sm" onclick="App.closeModal()">Close</button>
+            <div>
+              ${
+                this.unreadCount > 0
+                  ? `<button class="btn btn-outline btn-sm" onclick="Notifications.markAllRead()">
+                      <i class="bi bi-check-all"></i> Mark All as Read
+                     </button>`
+                  : '<div></div>'
+              }
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="App.closeModal()">Close</button>
           </div>
         </div>
       </div>
@@ -103,3 +112,5 @@ const Notifications = {
     }
   }
 };
+
+window.Notifications = Notifications;

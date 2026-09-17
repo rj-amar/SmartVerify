@@ -1,22 +1,53 @@
 /**
  * Online Verification System - Instruments Management Module
+ * Conforming to Legal Metrology Standards
  */
 
 const Instruments = {
   list: [],
 
+  handleFilterChange() {
+    const search = document.getElementById('filter-inst-search')?.value || '';
+    this.loadInstruments(search);
+  },
+
   async loadInstruments(search = '') {
     const container = document.getElementById('instruments-table-container');
     if (!container) return;
 
-    container.innerHTML = '<div class="empty-state"><i class="bi bi-arrow-repeat spin"></i><p>Loading registered instruments from database...</p></div>';
+    const statusFilter = document.getElementById('filter-inst-status')?.value || '';
+
+    // Shimmer skeleton
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>System Serial No.</th><th>Type &amp; Category</th><th>Manufacturer &amp; Model</th><th>Capacity &amp; Class</th><th>Installation &amp; Purchase</th><th>Status</th><th style="text-align:right;">Actions</th></tr>
+          </thead>
+          <tbody>
+            ${Array(5).fill(0).map(() => `
+              <tr class="skeleton-table-row">
+                <td><div class="skeleton skeleton-text" style="width:110px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:160px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:140px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:90px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:120px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:80px;"></div></td>
+                <td style="text-align:right;"><div class="skeleton skeleton-text" style="width:100px; margin-left:auto;"></div></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
 
     let url = '/instruments?limit=100';
     if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
 
     const res = await apiRequest(url);
     if (!res.ok) {
-      container.innerHTML = `<div class="empty-state text-danger"><i class="bi bi-exclamation-triangle"></i><p>${res.data.error || 'Failed to load instruments.'}</p></div>`;
+      container.innerHTML = `<div class="empty-state text-danger"><i class="bi bi-exclamation-triangle"></i><h4>Unable to load instruments</h4><p>${res.data?.error || 'Failed to fetch registered equipment.'}</p></div>`;
       return;
     }
 
@@ -32,11 +63,15 @@ const Instruments = {
       container.innerHTML = `
         <div class="empty-state">
           <i class="bi bi-scale"></i>
-          <h4>No instruments registered yet.</h4>
-          <p>Register your weighing or measuring device to begin the statutory verification process.</p>
-          <button class="btn btn-primary" style="margin-top: 14px;" onclick="Instruments.openRegisterModal()">
-            <i class="bi bi-plus-circle"></i> Register New Instrument
-          </button>
+          <h4>No instruments found</h4>
+          <p>No weighing or measuring devices match your current filters. Register your equipment to initiate the statutory verification process.</p>
+          ${
+            Auth.getRole() === 'owner'
+              ? `<button class="btn btn-secondary btn-sm" style="margin-top: 14px;" onclick="Instruments.openRegisterModal()">
+                   <i class="bi bi-plus-circle"></i> Register New Instrument
+                 </button>`
+              : ''
+          }
         </div>
       `;
       return;
@@ -45,12 +80,12 @@ const Instruments = {
     const rows = this.list.map(inst => `
       <tr>
         <td>
-          <strong style="color:var(--primary); font-family:monospace; font-size:0.95rem;">
+          <strong style="color:var(--navy-900); font-family:var(--font-mono); font-size:0.92rem;">
             ${inst.system_serial_number}
           </strong>
         </td>
         <td>
-          <div style="font-weight:600;">${inst.instrument_type}</div>
+          <div style="font-weight:700;">${inst.instrument_type}</div>
           <small style="color:var(--text-muted);">${inst.category}</small>
         </td>
         <td>
@@ -59,7 +94,7 @@ const Instruments = {
         </td>
         <td>
           <strong>${inst.capacity} ${inst.unit_of_measurement}</strong>
-          <div><small class="badge badge-secondary">${inst.accuracy_class}</small></div>
+          <div><small class="badge badge-secondary" style="margin-top:2px;">${inst.accuracy_class}</small></div>
         </td>
         <td>
           <div>${inst.installation_place}</div>
@@ -70,7 +105,8 @@ const Instruments = {
           <button class="btn btn-outline btn-sm" onclick="Instruments.viewDetails(${inst.id})">
             <i class="bi bi-eye"></i> Details
           </button>
-          ${this.renderLifecycleActions(inst)}        </td>
+          ${this.renderLifecycleActions(inst)}
+        </td>
       </tr>
     `).join('');
 
@@ -80,10 +116,10 @@ const Instruments = {
           <thead>
             <tr>
               <th>System Serial No.</th>
-              <th>Type & Category</th>
-              <th>Manufacturer & Model</th>
-              <th>Capacity & Class</th>
-              <th>Installation & Purchase</th>
+              <th>Type &amp; Category</th>
+              <th>Manufacturer &amp; Model</th>
+              <th>Capacity &amp; Class</th>
+              <th>Installation &amp; Purchase</th>
               <th>Status</th>
               <th style="text-align:right;">Actions</th>
             </tr>
@@ -107,23 +143,23 @@ const Instruments = {
 
     if (status === 'verified' && inst.latest_certificate_id) {
       return `
-        <button class="btn btn-outline btn-sm" onclick="Certificates.openRenewModal(${inst.latest_certificate_id})" style="margin-left:6px;">
+        <button class="btn btn-outline btn-sm" onclick="Certificates.openRenewModal(${inst.latest_certificate_id})" style="margin-left:4px;">
           <i class="bi bi-arrow-repeat"></i> ${certExpiring ? 'Renew Soon' : 'Renew'}
         </button>
-        <button class="btn btn-primary btn-sm" onclick="Instruments.startReverification(${inst.id})" style="margin-left:6px;">
+        <button class="btn btn-primary btn-sm" onclick="Instruments.startReverification(${inst.id})" style="margin-left:4px;">
           <i class="bi bi-shield-check"></i> Re-verify
         </button>`;
     }
 
     if (status === 'registered' || status === 'rejected' || status === 'expired') {
       return `
-        <button class="btn btn-primary btn-sm" onclick="Applications.openNewWizard(${inst.id}, '${status === 'expired' ? 'renewal' : 'initial'}')" style="margin-left:6px;">
+        <button class="btn btn-secondary btn-sm" onclick="Applications.openNewWizard(${inst.id}, '${status === 'expired' ? 'renewal' : 'initial'}')" style="margin-left:4px;">
           <i class="bi bi-send-check"></i> ${status === 'expired' ? 'Renew Verification' : 'Apply'}
         </button>`;
     }
 
     if (status === 'pending_verification') {
-      return `<span class="badge badge-info" style="margin-left:6px;"><i class="bi bi-hourglass-split"></i> In Progress</span>`;
+      return `<span class="badge badge-info" style="margin-left:4px;"><i class="bi bi-hourglass-split"></i> In Progress</span>`;
     }
 
     return '';
@@ -146,16 +182,20 @@ const Instruments = {
       <div class="modal-backdrop" id="inst-register-modal" onclick="if(event.target===this) App.closeModal()">
         <div class="modal-dialog modal-dialog-lg">
           <div class="modal-header">
-            <h3><i class="bi bi-plus-square-dotted"></i> Register New Weighing / Measuring Instrument</h3>
+            <h3><i class="bi bi-plus-square-dotted" style="color:var(--primary-blue);"></i> Register Commercial Instrument</h3>
             <button class="modal-close" onclick="App.closeModal()">&times;</button>
           </div>
           <form id="inst-form" onsubmit="Instruments.handleRegister(event)">
             <div class="modal-body">
-              <div class="alert alert-info" style="background:#EFF6FF; border:1px solid #BFDBFE; padding:12px 16px; border-radius:6px; font-size:0.85rem; margin-bottom:16px; color:#1E40AF;">
-                <i class="bi bi-info-circle-fill"></i>
-                <strong>Notice on System Serial Numbers:</strong> The official System Serial Number (e.g. <code>OVS-000001</code>) will be generated automatically and sequentially by the backend database upon submission.
+              <div class="alert alert-info" style="background:#EFF6FF; border:1px solid #BFDBFE; padding:12px 16px; border-radius:var(--radius-sm); font-size:0.84rem; margin-bottom:18px; color:#1E40AF; display:flex; align-items:center; gap:10px;">
+                <i class="bi bi-info-circle-fill" style="font-size:1.1rem; flex-shrink:0;"></i>
+                <div>
+                  <strong>Statutory Identification:</strong> The permanent System Serial Number (e.g. <code>OVS-000001</code>) is automatically generated by the database upon submission.
+                </div>
               </div>
 
+              <!-- Section 1: Classification -->
+              <div class="form-section-title"><i class="bi bi-tag"></i> 1. Instrument Classification</div>
               <div class="form-row">
                 <div class="form-group">
                   <label>Instrument Category <span class="required">*</span></label>
@@ -165,11 +205,13 @@ const Instruments = {
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>Instrument Type / Description <span class="required">*</span></label>
+                  <label>Instrument Description / Type <span class="required">*</span></label>
                   <input type="text" id="inst-type" class="form-control" placeholder="e.g. Electronic Counter Scale" required />
                 </div>
               </div>
 
+              <!-- Section 2: Technical Specifications -->
+              <div class="form-section-title"><i class="bi bi-cpu"></i> 2. Technical &amp; Metrological Specifications</div>
               <div class="form-row">
                 <div class="form-group">
                   <label>Manufacturer <span class="required">*</span></label>
@@ -183,8 +225,8 @@ const Instruments = {
 
               <div class="form-row">
                 <div class="form-group">
-                  <label>Manufacturer's Physical Serial Number</label>
-                  <input type="text" id="inst-mfg-serial" class="form-control" placeholder="Optional physical plate serial number" />
+                  <label>Manufacturer Physical Serial No.</label>
+                  <input type="text" id="inst-mfg-serial" class="form-control" placeholder="Physical plate serial number" />
                   <div class="form-hint">Physical factory serial on instrument body</div>
                 </div>
                 <div class="form-group">
@@ -207,7 +249,6 @@ const Instruments = {
                     <option value="">-- Select Unit --</option>
                     ${unitOptions}
                   </select>
-                  <div class="form-hint">kg, g, ton, L, mL, etc.</div>
                 </div>
                 <div class="form-group">
                   <label>Purchase Date <span class="required">*</span></label>
@@ -215,6 +256,8 @@ const Instruments = {
                 </div>
               </div>
 
+              <!-- Section 3: Installation Location -->
+              <div class="form-section-title"><i class="bi bi-geo-alt"></i> 3. Premises Installation Site</div>
               <div class="form-row">
                 <div class="form-group">
                   <label>Place of Installation (Premises) <span class="required">*</span></label>
@@ -222,13 +265,13 @@ const Instruments = {
                 </div>
                 <div class="form-group">
                   <label>Installation Address <span class="required">*</span></label>
-                  <input type="text" id="inst-address" class="form-control" placeholder="Exact address where instrument is operated" required />
+                  <input type="text" id="inst-address" class="form-control" placeholder="Exact postal address where instrument is operated" required />
                 </div>
               </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-outline" onclick="App.closeModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary" id="btn-inst-submit">
+              <button type="submit" class="btn btn-secondary" id="btn-inst-submit">
                 <i class="bi bi-cpu-fill"></i> Register Instrument
               </button>
             </div>
@@ -255,7 +298,7 @@ const Instruments = {
     const installation_address = document.getElementById('inst-address').value.trim();
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Generating Serial & Registering...';
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Generating Serial &amp; Registering...';
 
     const res = await apiRequest('/instruments', {
       method: 'POST',
@@ -281,7 +324,6 @@ const Instruments = {
       const serial = res.data.system_serial_number;
       App.closeModal();
 
-      // Display official success alert
       const successModalHtml = `
         <div class="modal-backdrop">
           <div class="modal-dialog">
@@ -289,28 +331,28 @@ const Instruments = {
               <h3 style="color:#065F46;"><i class="bi bi-check-circle-fill"></i> Instrument Registered Successfully</h3>
             </div>
             <div class="modal-body" style="text-align:center; padding: 28px 20px;">
-              <div style="font-size:3rem; color:#059669; margin-bottom:12px;">
+              <div style="font-size:3.2rem; color:#059669; margin-bottom:10px;">
                 <i class="bi bi-patch-check-fill"></i>
               </div>
-              <h4>Instrument Registered Successfully</h4>
-              <p style="color:var(--text-muted); margin-top:6px;">Your device has been recorded into the Legal Metrology Registry.</p>
+              <h4 style="font-size:1.2rem; font-weight:800; color:var(--navy-900);">Statutory Record Created</h4>
+              <p style="color:var(--text-muted); margin-top:4px; font-size:0.88rem;">Your device has been recorded in the Legal Metrology Registry.</p>
               
-              <div style="background:#F1F5F9; border:2px dashed #0A2540; padding:16px; border-radius:8px; margin:20px 0;">
-                <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:600;">Official System Serial Number</div>
-                <div style="font-size:1.8rem; font-weight:800; color:#0A2540; font-family:monospace; margin-top:4px;">
+              <div style="background:#F8FAFC; border:2px dashed #0066FF; padding:18px; border-radius:var(--radius-md); margin:20px 0;">
+                <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Official System Serial Number</div>
+                <div style="font-size:2rem; font-weight:800; color:var(--navy-900); font-family:var(--font-mono); margin-top:4px;">
                   ${serial}
                 </div>
               </div>
 
-              <p style="font-size:0.85rem; color:var(--text-secondary);">
-                You can now submit a verification application to schedule statutory inspection and receive your digital certificate.
+              <p style="font-size:0.84rem; color:var(--text-secondary);">
+                Submit a verification application to schedule statutory inspection and receive your official digital certificate.
               </p>
             </div>
-            <div class="modal-footer" style="justify-content:center;">
+            <div class="modal-footer" style="justify-content:center; gap:12px;">
               <button type="button" class="btn btn-outline" onclick="App.closeModal(); Instruments.loadInstruments();">
-                View My Instruments
+                View Instruments
               </button>
-              <button type="button" class="btn btn-primary" onclick="App.closeModal(); Applications.openNewWizard(${res.data.instrument.id});">
+              <button type="button" class="btn btn-secondary" onclick="App.closeModal(); Applications.openNewWizard(${res.data.instrument.id});">
                 <i class="bi bi-send-check"></i> Apply for Verification Now
               </button>
             </div>
@@ -337,59 +379,59 @@ const Instruments = {
     const appsHtml = apps.length > 0
       ? apps.map(a => `
           <tr>
-            <td><strong>${a.application_number}</strong></td>
+            <td><strong style="font-family:var(--font-mono);">${a.application_number}</strong></td>
             <td>${getStatusBadge(a.status)}</td>
             <td>${formatDate(a.submitted_at)}</td>
-            <td>${a.certificate_number ? `<span class="badge badge-success">${a.certificate_number}</span>` : '<span style="color:var(--text-muted);">None</span>'}</td>
+            <td>${a.certificate_number ? `<span class="badge badge-success" style="font-family:var(--font-mono);">${a.certificate_number}</span>` : '<span style="color:var(--text-muted);">None</span>'}</td>
           </tr>
         `).join('')
-      : '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No verification applications submitted for this device yet.</td></tr>';
+      : '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">No verification applications submitted for this device yet.</td></tr>';
 
     const modalHtml = `
       <div class="modal-backdrop" onclick="if(event.target===this) App.closeModal()">
         <div class="modal-dialog modal-dialog-lg">
           <div class="modal-header">
-            <h3><i class="bi bi-info-circle-fill"></i> Instrument Specifications: ${inst.system_serial_number}</h3>
+            <h3><i class="bi bi-info-circle-fill" style="color:var(--primary-blue);"></i> Specifications: ${inst.system_serial_number}</h3>
             <button class="modal-close" onclick="App.closeModal()">&times;</button>
           </div>
           <div class="modal-body">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
-              <div style="background:#F8FAFC; padding:12px; border-radius:6px; border:1px solid var(--border);">
-                <small style="color:var(--text-muted);">System Serial Number</small>
-                <div style="font-weight:700; font-family:monospace; color:var(--primary);">${inst.system_serial_number}</div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+              <div style="background:#F8FAFC; padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                <small style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700;">System Serial Number</small>
+                <div style="font-weight:800; font-family:var(--font-mono); color:var(--navy-900); font-size:1.05rem;">${inst.system_serial_number}</div>
               </div>
-              <div style="background:#F8FAFC; padding:12px; border-radius:6px; border:1px solid var(--border);">
-                <small style="color:var(--text-muted);">Current Status</small>
+              <div style="background:#F8FAFC; padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                <small style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700;">Statutory Status</small>
                 <div>${getStatusBadge(inst.status)}</div>
               </div>
-              <div style="background:#F8FAFC; padding:12px; border-radius:6px; border:1px solid var(--border);">
-                <small style="color:var(--text-muted);">Capacity & Unit</small>
+              <div style="background:#F8FAFC; padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                <small style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700;">Capacity &amp; Unit</small>
                 <div style="font-weight:700;">${inst.capacity} ${inst.unit_of_measurement}</div>
               </div>
-              <div style="background:#F8FAFC; padding:12px; border-radius:6px; border:1px solid var(--border);">
-                <small style="color:var(--text-muted);">Accuracy Class</small>
-                <div style="font-weight:600;">${inst.accuracy_class}</div>
+              <div style="background:#F8FAFC; padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                <small style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700;">Accuracy Class</small>
+                <div style="font-weight:600;"><span class="badge badge-secondary">${inst.accuracy_class}</span></div>
               </div>
             </div>
 
-            <div class="table-responsive" style="margin-bottom:20px;">
-              <table class="table" style="font-size:0.85rem;">
+            <div class="table-responsive" style="margin-bottom:20px; border:1px solid var(--border-color); border-radius:var(--radius-sm);">
+              <table class="table" style="font-size:0.85rem; margin:0;">
                 <tbody>
-                  <tr><th>Instrument Type</th><td>${inst.instrument_type}</td><th>Category</th><td>${inst.category}</td></tr>
+                  <tr><th style="width:25%;">Instrument Type</th><td><strong>${inst.instrument_type}</strong></td><th style="width:25%;">Category</th><td>${inst.category}</td></tr>
                   <tr><th>Manufacturer</th><td>${inst.manufacturer}</td><th>Model Number</th><td>${inst.model_number}</td></tr>
-                  <tr><th>Manufacturer Serial No</th><td>${inst.manufacturer_serial_number || 'N/A'}</td><th>Purchase Date</th><td>${formatDate(inst.purchase_date)}</td></tr>
-                  <tr><th>Installation Location</th><td>${inst.installation_place}</td><th>Address</th><td>${inst.installation_address}</td></tr>
+                  <tr><th>Manufacturer Serial</th><td>${inst.manufacturer_serial_number || 'N/A'}</td><th>Purchase Date</th><td>${formatDate(inst.purchase_date)}</td></tr>
+                  <tr><th>Installation Location</th><td>${inst.installation_place}</td><th>Site Address</th><td>${inst.installation_address}</td></tr>
                 </tbody>
               </table>
             </div>
 
-            <h4 style="font-size:0.95rem; font-weight:700; margin-bottom:10px; color:var(--primary);">
-              <i class="bi bi-clock-history"></i> Verification Application History
+            <h4 style="font-size:0.95rem; font-weight:800; margin-bottom:10px; color:var(--navy-900); display:flex; align-items:center; gap:8px;">
+              <i class="bi bi-clock-history" style="color:var(--primary-blue);"></i> Verification Application History
             </h4>
-            <div class="table-responsive">
-              <table class="table" style="font-size:0.82rem;">
+            <div class="table-responsive" style="border:1px solid var(--border-color); border-radius:var(--radius-sm);">
+              <table class="table" style="font-size:0.82rem; margin:0;">
                 <thead>
-                  <tr><th>Application No</th><th>Status</th><th>Submitted On</th><th>Certificate</th></tr>
+                  <tr><th>Application Ref</th><th>Status</th><th>Submitted On</th><th>Certificate</th></tr>
                 </thead>
                 <tbody>
                   ${appsHtml}
@@ -401,7 +443,7 @@ const Instruments = {
             <button class="btn btn-outline" onclick="App.closeModal()">Close</button>
             ${
               inst.status === 'registered' || inst.status === 'rejected' || inst.status === 'expired'
-                ? `<button class="btn btn-primary" onclick="App.closeModal(); Applications.openNewWizard(${inst.id});">
+                ? `<button class="btn btn-secondary" onclick="App.closeModal(); Applications.openNewWizard(${inst.id});">
                     <i class="bi bi-send-check"></i> Apply for Verification
                    </button>`
                 : ''
@@ -413,4 +455,5 @@ const Instruments = {
     App.setModal(modalHtml);
   }
 };
+
 window.Instruments = Instruments;

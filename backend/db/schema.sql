@@ -6,6 +6,7 @@
 -- Drop existing tables in reverse dependency order
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS complaints CASCADE;
 DROP TABLE IF EXISTS certificates CASCADE;
 DROP TABLE IF EXISTS inspection_photos CASCADE;
 DROP TABLE IF EXISTS inspection_results CASCADE;
@@ -25,6 +26,9 @@ CREATE SEQUENCE app_serial_seq START WITH 1;
 
 DROP SEQUENCE IF EXISTS cert_serial_seq;
 CREATE SEQUENCE cert_serial_seq START WITH 1;
+
+DROP SEQUENCE IF EXISTS complaint_serial_seq;
+CREATE SEQUENCE complaint_serial_seq START WITH 1;
 
 -- 1. DISTRICTS MASTER TABLE
 CREATE TABLE districts (
@@ -201,7 +205,44 @@ CREATE TABLE certificates (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. NOTIFICATIONS TABLE
+-- 10. CONSUMER COMPLAINTS TABLE
+CREATE TABLE complaints (
+    id SERIAL PRIMARY KEY,
+    complaint_reference VARCHAR(50) UNIQUE NOT NULL,
+    consumer_name VARCHAR(150) NOT NULL,
+    mobile VARCHAR(20) NOT NULL,
+    email VARCHAR(150),
+    instrument_type VARCHAR(100) NOT NULL,
+    manufacturer VARCHAR(150),
+    model_number VARCHAR(100),
+    serial_number VARCHAR(100),
+    certificate_number VARCHAR(100),
+    category VARCHAR(80) NOT NULL CHECK (category IN (
+        'suspected_inaccurate_measurement',
+        'certificate_verification_issue',
+        'suspected_tampering',
+        'incorrect_weighing_measuring',
+        'instrument_display_issue',
+        'other'
+    )),
+    description TEXT NOT NULL,
+    location TEXT NOT NULL,
+    incident_date DATE,
+    status VARCHAR(30) NOT NULL DEFAULT 'submitted' CHECK (status IN (
+        'submitted', 'under_review', 'assigned', 'inspection_required', 'resolved', 'closed'
+    )),
+    assigned_officer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    internal_remarks TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_complaints_reference ON complaints(complaint_reference);
+CREATE INDEX idx_complaints_status ON complaints(status);
+CREATE INDEX idx_complaints_created_at ON complaints(created_at DESC);
+CREATE INDEX idx_complaints_assigned_officer ON complaints(assigned_officer_id);
+
+-- 11. NOTIFICATIONS TABLE
 CREATE TABLE notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -212,7 +253,7 @@ CREATE TABLE notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 11. AUDIT LOGS TABLE
+-- 12. AUDIT LOGS TABLE
 CREATE TABLE audit_logs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,

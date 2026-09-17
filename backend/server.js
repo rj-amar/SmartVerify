@@ -56,6 +56,7 @@ app.use('/api/documents', require('./routes/documents'));
 app.use('/api/inspections', require('./routes/inspections'));
 app.use('/api/certificates', require('./routes/certificates'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/complaints', require('./routes/complaints'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Public QR Code verification URL redirect / fallback

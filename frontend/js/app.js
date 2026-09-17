@@ -7,6 +7,15 @@ const App = {
 
   async init() {
     Auth.init();
+
+    // Apply the public-site theme immediately so the homepage never renders
+    // as a blank/internal white canvas during session verification.
+    const initialRoute = (window.location.hash.replace('#', '') || 'home').split('?')[0];
+    const initialIsPublic = ['home', 'public-verify', 'complaint'].includes(initialRoute) ||
+      initialRoute === 'home#how-it-works' ||
+      initialRoute === 'home#services';
+    document.body.classList.toggle('public-mode', initialIsPublic);
+
     await Auth.verifySession();
     this.renderAuthUI();
 
@@ -22,8 +31,9 @@ const App = {
   },
 
   routeByHash() {
-    const hash = window.location.hash.replace('#', '') || 'home';
-    const [route, queryString] = hash.split('?');
+    const rawHash = window.location.hash.replace(/^#/, '') || 'home';
+    const [hashPath, queryString] = rawHash.split('?');
+    const [route, section] = hashPath.split('#');
     const params = new URLSearchParams(queryString || '');
 
     if (route === 'verify') {
@@ -36,6 +46,14 @@ const App = {
     }
 
     this.navigate(route);
+
+    // Support public-page section links without changing the route.
+    if (route === 'home' && section) {
+      requestAnimationFrame(() => {
+        const target = document.getElementById(section);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   },
 
   navigate(viewName) {
@@ -74,6 +92,22 @@ const App = {
       // Fallback
       document.getElementById('view-home').style.display = 'block';
       this.currentView = 'home';
+    }
+
+    // Public pages use the light public-site navigation theme. Internal
+    // role dashboards keep their existing application shell unchanged.
+    const isPublicView = ['home', 'public-verify', 'complaint'].includes(viewName);
+    const isInternalView = !isPublicView && Auth.isLoggedIn();
+    document.body.classList.toggle('public-mode', isPublicView);
+    document.body.classList.toggle('internal-mode', isInternalView);
+
+    // The public-site footer is rendered once in index.html, so explicitly
+    // control its visibility with the current route. It must never appear
+    // inside authenticated Owner/Officer/Admin workspaces.
+    const publicFooter = document.querySelector('.public-site-footer');
+    if (publicFooter) {
+      publicFooter.style.display = isPublicView ? '' : 'none';
+      publicFooter.setAttribute('aria-hidden', isPublicView ? 'false' : 'true');
     }
 
     // Update sidebar / navbar active link
@@ -116,6 +150,7 @@ const App = {
     const isLogged = Auth.isLoggedIn();
     const user = Auth.currentUser;
     const role = user ? user.role : null;
+    document.body.dataset.role = role || '';
 
     const guestNav = document.getElementById('nav-guest-actions');
     const userNav = document.getElementById('nav-user-actions');

@@ -96,7 +96,7 @@ const Applications = {
           }
           ${
             isOfficer && app.status === 'inspection_completed'
-              ? `<button class="btn btn-success btn-sm" style="margin-left:6px;" onclick="Certificates.openApprovalModal(${app.id})">
+              ? `<button class="btn btn-success btn-sm" style="margin-left:6px;" onclick="openOfficerFinalDecision(${app.id})">
                   <i class="bi bi-patch-check"></i> Decide
                  </button>`
               : ''

@@ -1,5 +1,6 @@
 /**
  * Online Verification System - Officer Inspections & Digital Inspection Form Module
+ * Conforming to Legal Metrology Standards
  */
 
 const Inspections = {
@@ -10,11 +11,33 @@ const Inspections = {
     const container = document.getElementById('inspections-table-container');
     if (!container) return;
 
-    container.innerHTML = '<div class="empty-state"><i class="bi bi-arrow-repeat spin"></i><p>Loading scheduled inspections...</p></div>';
+    // Shimmer skeleton loading
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Application</th><th>Instrument</th><th>Applicant</th><th>Schedule</th><th>Location</th><th>Status</th><th style="text-align:right;">Actions</th></tr>
+          </thead>
+          <tbody>
+            ${Array(5).fill(0).map(() => `
+              <tr class="skeleton-table-row">
+                <td><div class="skeleton skeleton-text" style="width:120px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:160px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:130px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:110px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:140px;"></div></td>
+                <td><div class="skeleton skeleton-text" style="width:80px;"></div></td>
+                <td style="text-align:right;"><div class="skeleton skeleton-text" style="width:100px; margin-left:auto;"></div></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
 
     const res = await apiRequest('/inspections?limit=100');
     if (!res.ok) {
-      container.innerHTML = `<div class="empty-state text-danger"><p>${res.data.error || 'Failed to load inspections.'}</p></div>`;
+      container.innerHTML = `<div class="empty-state text-danger"><i class="bi bi-exclamation-triangle"></i><h4>Unable to load inspections</h4><p>${res.data?.error || 'Failed to fetch inspections list.'}</p></div>`;
       return;
     }
 
@@ -30,8 +53,8 @@ const Inspections = {
       container.innerHTML = `
         <div class="empty-state">
           <i class="bi bi-clipboard-check"></i>
-          <h4>No inspections scheduled.</h4>
-          <p>Assigned inspections scheduled by the officer will appear here.</p>
+          <h4>No inspections scheduled</h4>
+          <p>Scheduled physical verifications will appear here once allocated and confirmed.</p>
         </div>
       `;
       return;
@@ -42,13 +65,13 @@ const Inspections = {
     const rows = this.list.map(insp => `
       <tr>
         <td>
-          <strong style="color:var(--primary); font-family:monospace; font-size:0.92rem;">
+          <strong style="color:var(--navy-900); font-family:var(--font-mono); font-size:0.92rem;">
             ${insp.application_number}
           </strong>
         </td>
         <td>
-          <div style="font-weight:600;">${insp.instrument_type}</div>
-          <small style="color:var(--text-muted); font-family:monospace;">${insp.system_serial_number} (${insp.capacity} ${insp.unit_of_measurement})</small>
+          <div style="font-weight:700;">${insp.instrument_type}</div>
+          <small style="color:var(--text-muted); font-family:var(--font-mono);">${insp.system_serial_number} (${insp.capacity} ${insp.unit_of_measurement})</small>
         </td>
         <td>
           <div>${insp.business_name || insp.applicant_name}</div>
@@ -71,15 +94,15 @@ const Inspections = {
                   const status = String(insp.status || '').trim().toLowerCase();
                   if (status === 'completed' || status === 'inspection_completed') {
                     return `<button class="btn btn-outline btn-sm" disabled aria-label="Inspection completed">
-                              <i class="bi bi-check-circle-fill"></i> Inspection Completed
+                              <i class="bi bi-check-circle-fill"></i> Completed
                             </button>`;
                   }
                   if (status === 'cancelled' || status === 'canceled') {
                     return `<button class="btn btn-outline btn-sm" disabled>
-                              <i class="bi bi-x-circle-fill"></i> Inspection Cancelled
+                              <i class="bi bi-x-circle-fill"></i> Cancelled
                             </button>`;
                   }
-                  return `<button class="btn btn-primary btn-sm" onclick="Inspections.openDigitalForm(${insp.id})">
+                  return `<button class="btn btn-secondary btn-sm" onclick="Inspections.openDigitalForm(${insp.id})">
                             <i class="bi bi-pencil-square"></i> Conduct Inspection
                           </button>`;
                 })()
@@ -123,36 +146,36 @@ const Inspections = {
       <div class="modal-backdrop" id="schedule-modal" onclick="if(event.target===this) App.closeModal()">
         <div class="modal-dialog">
           <div class="modal-header">
-            <h3><i class="bi bi-calendar-plus-fill"></i> Schedule Physical Verification Inspection</h3>
+            <h3><i class="bi bi-calendar-plus-fill" style="color:var(--primary-blue);"></i> Schedule Physical Verification</h3>
             <button class="modal-close" onclick="App.closeModal()">&times;</button>
           </div>
           <form onsubmit="Inspections.handleScheduleSubmit(event, ${applicationId})">
             <div class="modal-body">
               <div class="form-row">
                 <div class="form-group">
-                  <label>Scheduled Inspection Date <span class="required">*</span></label>
+                  <label>Inspection Date <span class="required">*</span></label>
                   <input type="date" id="sched-date" class="form-control" min="${today}" required />
                 </div>
                 <div class="form-group">
-                  <label>Scheduled Inspection Time <span class="required">*</span></label>
+                  <label>Inspection Time <span class="required">*</span></label>
                   <input type="time" id="sched-time" class="form-control" value="10:00" required />
                 </div>
               </div>
 
               <div class="form-group">
-                <label>Physical Inspection Site Location <span class="required">*</span></label>
+                <label>Physical Inspection Site Premises <span class="required">*</span></label>
                 <input type="text" id="sched-location" class="form-control" placeholder="Precise site or shop premises address" required />
               </div>
 
               <div class="form-group">
-                <label>Inspector Remarks / Standard Weights Required</label>
+                <label>Inspector Remarks / Standard Load Weights Required</label>
                 <textarea id="sched-remarks" class="form-control" rows="3" placeholder="e.g. Bring standard M1 class weights 20kg x 5 for load test. Ensure weighing berth is clean."></textarea>
               </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-outline" onclick="App.closeModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary" id="btn-sched-submit">
-                <i class="bi bi-calendar-check-fill"></i> Confirm & Notify Applicant
+              <button type="submit" class="btn btn-secondary" id="btn-sched-submit">
+                <i class="bi bi-calendar-check-fill"></i> Confirm &amp; Notify Applicant
               </button>
             </div>
           </form>
@@ -185,7 +208,7 @@ const Inspections = {
     });
 
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-calendar-check-fill"></i> Confirm & Notify Applicant';
+    btn.innerHTML = '<i class="bi bi-calendar-check-fill"></i> Confirm &amp; Notify Applicant';
 
     if (res.ok) {
       showToast('Inspection scheduled successfully! Applicant notified.', 'success');
@@ -208,8 +231,6 @@ const Inspections = {
     }
 
     const insp = res.data.inspection;
-    // The API returns photos alongside the inspection object, so normalize
-    // them into activeInspection before rendering the form.
     const photos = Array.isArray(res.data.photos)
       ? res.data.photos
       : (Array.isArray(insp.photos) ? insp.photos : []);
@@ -217,7 +238,6 @@ const Inspections = {
     const unit = insp.unit_of_measurement || 'kg';
     const capacityNum = parseFloat(insp.capacity) || 100;
 
-    // Standard test points initialized dynamically based on capacity and unit
     let testPoints = insp.results && insp.results.length > 0
       ? insp.results
       : [
@@ -248,91 +268,117 @@ const Inspections = {
       return `
         <tr id="tp-row-${idx}">
           <td>
-            <input type="text" class="form-control form-control-sm" value="${p.test_point}" onchange="Inspections.updateTestPoint(${idx}, 'test_point', this.value)" />
+            <input type="text" class="form-control form-control-sm" value="${escapeHtml(p.test_point)}" onchange="Inspections.updateTestPoint(${idx}, 'test_point', this.value)" />
           </td>
           <td>
             <div style="display:flex; align-items:center; gap:4px;">
               <input type="number" step="any" class="form-control form-control-sm" value="${p.standard_value}" oninput="Inspections.calcTestPoint(${idx}, 'standard_value', this.value)" />
-              <small>${unit}</small>
+              <small style="color:var(--text-muted); font-weight:700;">${unit}</small>
             </div>
           </td>
           <td>
             <div style="display:flex; align-items:center; gap:4px;">
               <input type="number" step="any" class="form-control form-control-sm" value="${p.observed_value}" oninput="Inspections.calcTestPoint(${idx}, 'observed_value', this.value)" />
-              <small>${unit}</small>
+              <small style="color:var(--text-muted); font-weight:700;">${unit}</small>
             </div>
           </td>
           <td>
             <div style="display:flex; align-items:center; gap:4px;">
               <input type="number" step="any" class="form-control form-control-sm" value="${p.permissible_error}" oninput="Inspections.calcTestPoint(${idx}, 'permissible_error', this.value)" />
-              <small>${unit}</small>
+              <small style="color:var(--text-muted); font-weight:700;">${unit}</small>
             </div>
           </td>
-          <td style="font-family:monospace; font-size:0.85rem; font-weight:600;" id="tp-err-${idx}">
+          <td style="font-family:var(--font-mono); font-size:0.84rem; font-weight:700;" id="tp-err-${idx}">
             ${errVal} ${unit} (${errPct}%)
           </td>
           <td id="tp-res-${idx}">
             <span class="badge ${isPass ? 'badge-success' : 'badge-danger'}">${isPass ? 'PASS' : 'FAIL'}</span>
           </td>
           <td>
-            <input type="text" class="form-control form-control-sm" value="${p.remarks || ''}" placeholder="Remarks" onchange="Inspections.updateTestPoint(${idx}, 'remarks', this.value)" />
+            <input type="text" class="form-control form-control-sm" value="${escapeHtml(p.remarks || '')}" placeholder="Remarks" onchange="Inspections.updateTestPoint(${idx}, 'remarks', this.value)" />
           </td>
-          <td>
-            <button type="button" class="btn btn-danger btn-sm" onclick="Inspections.removeTestPoint(${idx})">&times;</button>
+          <td style="text-align:right;">
+            <button type="button" class="btn btn-danger btn-sm" onclick="Inspections.removeTestPoint(${idx})" title="Remove test point">&times;</button>
           </td>
         </tr>
       `;
     }).join('');
 
     const photosHtml = photos.length > 0
-      ? photos.map(ph => `
-          <div style="position:relative; border:1px solid var(--border); border-radius:6px; overflow:hidden; background:#F8FAFC; text-align:center;">
-            <img data-photo-filename="${ph.stored_filename}" class="photo-thumb protected-inspection-photo" alt="${ph.filename || ph.original_filename || 'Inspection photo'}" style="width:100%; height:120px; object-fit:cover;" />
-            <div style="padding:4px; font-size:0.72rem; color:var(--text-muted);">${ph.caption || ph.filename || ph.original_filename || 'Inspection photo'}</div>
-          </div>
-        `).join('')
+      ? `<div class="table-responsive" style="border:1px solid var(--border-subtle); border-radius:var(--radius-xs);">
+          <table class="table" style="font-size:0.82rem; margin:0;">
+            <thead>
+              <tr>
+                <th>Photograph</th>
+                <th>Caption</th>
+                <th>Uploaded</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${photos.map((ph, index) => {
+                const filename = ph.stored_filename || ph.filename || '';
+                const caption = ph.caption || ph.original_filename || `Inspection photo ${index + 1}`;
+                const uploaded = ph.uploaded_at ? formatDateTime(ph.uploaded_at) : '—';
+                const safeFilename = String(filename).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                return `<tr>
+                  <td><strong>${escapeHtml(ph.original_filename || ph.filename || `Photo ${index + 1}`)}</strong></td>
+                  <td>${escapeHtml(caption)}</td>
+                  <td>${uploaded}</td>
+                  <td style="text-align:right; white-space:nowrap;">
+                    <button type="button" class="btn btn-outline btn-sm"
+                      onclick="Applications.viewInspectionPhoto('${safeFilename}')"
+                      title="Open photograph in new tab">
+                      <i class="bi bi-eye"></i> View
+                    </button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`
       : '<div style="color:var(--text-muted); font-size:0.82rem; font-style:italic;">No photographs uploaded yet.</div>';
 
     const modalHtml = `
       <div class="modal-backdrop" id="digital-insp-modal">
-        <div class="modal-dialog modal-dialog-lg" style="max-width:960px;">
+        <div class="modal-dialog modal-dialog-lg" style="max-width:980px;">
           <div class="modal-header">
-            <h3><i class="bi bi-clipboard2-pulse-fill"></i> Digital Field Inspection Form</h3>
+            <h3><i class="bi bi-clipboard2-pulse-fill" style="color:var(--primary-blue);"></i> Digital Field Inspection Form</h3>
             <button class="modal-close" onclick="App.closeModal()">&times;</button>
           </div>
           <div class="modal-body">
-            <!-- Spec Band -->
-            <div style="background:#0A2540; color:#FFFFFF; padding:14px 18px; border-radius:8px; display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px; font-size:0.82rem;">
-              <div><span style="color:#94A3B8;">Instrument:</span> <br><strong>${insp.instrument_type}</strong></div>
-              <div><span style="color:#94A3B8;">Serial Number:</span> <br><strong style="font-family:monospace; color:#FDE68A;">${insp.system_serial_number}</strong></div>
-              <div><span style="color:#94A3B8;">Capacity & Unit:</span> <br><strong>${insp.capacity} ${unit}</strong></div>
-              <div><span style="color:#94A3B8;">Accuracy Class:</span> <br><strong>${insp.accuracy_class}</strong></div>
-              <div><span style="color:#94A3B8;">Manufacturer / Model:</span> <br><strong>${insp.manufacturer} (${insp.model_number})</strong></div>
-              <div><span style="color:#94A3B8;">Applicant / Business:</span> <br><strong>${insp.business_name || insp.applicant_name}</strong></div>
+            <!-- Specification Band -->
+            <div style="background:var(--navy-900); color:#FFFFFF; padding:16px 20px; border-radius:var(--radius-sm); display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:20px; font-size:0.84rem;">
+              <div><span style="color:#94A3B8;">Instrument:</span><br><strong>${insp.instrument_type}</strong></div>
+              <div><span style="color:#94A3B8;">Serial Number:</span><br><strong style="font-family:var(--font-mono); color:#FDE68A;">${insp.system_serial_number}</strong></div>
+              <div><span style="color:#94A3B8;">Capacity &amp; Unit:</span><br><strong>${insp.capacity} ${unit}</strong></div>
+              <div><span style="color:#94A3B8;">Accuracy Class:</span><br><strong>${insp.accuracy_class}</strong></div>
+              <div><span style="color:#94A3B8;">Manufacturer / Model:</span><br><strong>${insp.manufacturer} (${insp.model_number})</strong></div>
+              <div><span style="color:#94A3B8;">Applicant / Business:</span><br><strong>${insp.business_name || insp.applicant_name}</strong></div>
             </div>
 
             <!-- Dynamic Test Points Grid -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <h4 style="font-size:0.95rem; font-weight:700; color:var(--primary); margin:0;">
-                <i class="bi bi-speedometer2"></i> Statutory Test Point Measurements (${unit})
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h4 style="font-size:0.95rem; font-weight:800; color:var(--navy-900); margin:0;">
+                <i class="bi bi-speedometer2" style="color:var(--primary-blue);"></i> Statutory Test Point Measurements (${unit})
               </h4>
               <button type="button" class="btn btn-outline btn-sm" onclick="Inspections.addTestPoint()">
                 <i class="bi bi-plus-lg"></i> Add Test Point
               </button>
             </div>
 
-            <div class="table-responsive" style="margin-bottom:20px; border:1px solid var(--border); border-radius:6px;">
-              <table class="table inspection-test-table" style="font-size:0.82rem;">
+            <div class="table-responsive" style="margin-bottom:20px; border:1px solid var(--border-color); border-radius:var(--radius-sm);">
+              <table class="table inspection-test-table" style="font-size:0.82rem; margin:0;">
                 <thead>
                   <tr>
-                    <th style="width:25%;">Test Point</th>
+                    <th style="width:24%;">Test Point</th>
                     <th style="width:16%;">Standard Value</th>
                     <th style="width:16%;">Observed Value</th>
                     <th style="width:15%;">Permissible Error</th>
                     <th style="width:14%;">Calculated Error</th>
                     <th style="width:8%;">Result</th>
-                    <th style="width:15%;">Remarks</th>
-                    <th></th>
+                    <th style="width:14%;">Remarks</th>
+                    <th style="width:3%;"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -341,23 +387,21 @@ const Inspections = {
               </table>
             </div>
 
-            <!-- Photos Section -->
-            <div style="border-top:1px solid var(--border); padding-top:16px; margin-bottom:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h4 style="font-size:0.95rem; font-weight:700; color:var(--primary); margin:0;">
-                  <i class="bi bi-camera-fill"></i> Inspection Photographs (Max 10 Images, Max 5MB Each)
-                </h4>
-              </div>
+            <!-- Photographs Section -->
+            <div style="border-top:1px solid var(--border-color); padding-top:18px; margin-bottom:18px;">
+              <h4 style="font-size:0.92rem; font-weight:800; color:var(--navy-900); margin-bottom:10px;">
+                <i class="bi bi-camera-fill" style="color:var(--primary-blue);"></i> Inspection Photographic Evidence (Max 10 Images, Max 5MB Each)
+              </h4>
 
-              <div class="form-row" style="margin-bottom:12px;">
-                <div class="form-group" style="flex:1;">
+              <div class="form-row" style="margin-bottom:12px; align-items:center;">
+                <div class="form-group" style="flex:1; margin:0;">
                   <input type="file" id="insp-photo-input" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp" multiple />
                 </div>
-                <div class="form-group" style="flex:1;">
-                  <input type="text" id="insp-photo-caption" class="form-control form-control-sm" placeholder="Optional Photo Caption" />
+                <div class="form-group" style="flex:1; margin:0;">
+                  <input type="text" id="insp-photo-caption" class="form-control form-control-sm" placeholder="Optional Photo Caption (e.g. Seal Condition, Indicator Plate)" />
                 </div>
                 <div>
-                  <button type="button" class="btn btn-secondary btn-sm" id="btn-upload-photo" onclick="Inspections.uploadPhotos(${insp.id})">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-upload-photo" onclick="Inspections.uploadPhotos(${insp.id})">
                     <i class="bi bi-cloud-arrow-up"></i> Upload Photos
                   </button>
                 </div>
@@ -369,9 +413,9 @@ const Inspections = {
             </div>
 
             <!-- General Inspector Remarks -->
-            <div class="form-group" style="border-top:1px solid var(--border); padding-top:16px;">
-              <label>Field Verification Summary & Stamp Remarks</label>
-              <textarea id="insp-overall-remarks" class="form-control" rows="2" placeholder="Overall summary of physical condition, seal integrity, and test result conformance.">${insp.remarks || ''}</textarea>
+            <div class="form-group" style="border-top:1px solid var(--border-color); padding-top:16px;">
+              <label>Field Verification Summary &amp; Stamp Remarks</label>
+              <textarea id="insp-overall-remarks" class="form-control" rows="2" placeholder="Overall summary of physical condition, seal integrity, lead stamp application, and tolerance conformance.">${escapeHtml(insp.remarks || '')}</textarea>
             </div>
           </div>
           <div class="modal-footer" style="justify-content:space-between;">
@@ -379,8 +423,8 @@ const Inspections = {
               <button type="button" class="btn btn-outline" onclick="App.closeModal()">Close Form</button>
             </div>
             <div style="display:flex; gap:10px;">
-              <button type="button" class="btn btn-primary" id="btn-save-measurements" onclick="Inspections.saveTestPoints(${insp.id})">
-                <i class="bi bi-save"></i> Save Test Results
+              <button type="button" class="btn btn-outline" id="btn-save-measurements" onclick="Inspections.saveTestPoints(${insp.id})">
+                <i class="bi bi-save"></i> Save Results
               </button>
               <button type="button" class="btn btn-success" id="btn-complete-insp" onclick="Inspections.completeInspection(${insp.id})">
                 <i class="bi bi-check-all"></i> Complete Inspection
@@ -391,7 +435,6 @@ const Inspections = {
       </div>
     `;
     App.setModal(modalHtml);
-    this.loadProtectedPhotoPreviews(photos);
   },
 
   async loadProtectedPhotoPreviews(photos) {
@@ -464,8 +507,10 @@ const Inspections = {
 
   async saveTestPoints(inspectionId) {
     const btn = document.getElementById('btn-save-measurements');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Saving...';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Saving...';
+    }
 
     const res = await apiRequest(`/inspections/${inspectionId}/results`, {
       method: 'POST',
@@ -474,8 +519,10 @@ const Inspections = {
       }
     });
 
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-save"></i> Save Test Results';
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-save"></i> Save Results';
+    }
 
     if (res.ok) {
       showToast('Measurements saved successfully.', 'success');
@@ -500,20 +547,23 @@ const Inspections = {
       formData.append('photos', file);
     }
 
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Uploading...';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Uploading...';
+    }
 
     const res = await apiRequest(`/inspections/${inspectionId}/photos`, {
       method: 'POST',
       body: formData
     });
 
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Upload Photos';
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Upload Photos';
+    }
 
     if (res.ok) {
       showToast('Inspection photos uploaded successfully.', 'success');
-      // Reload inspection to show fresh photos
       this.openDigitalForm(inspectionId);
     } else {
       showToast(res.data.error || 'Failed to upload photos.', 'danger');
@@ -521,33 +571,36 @@ const Inspections = {
   },
 
   async completeInspection(inspectionId) {
-    // Ensure test points saved first
     await this.saveTestPoints(inspectionId);
 
     const remarks = document.getElementById('insp-overall-remarks').value.trim();
     const btn = document.getElementById('btn-complete-insp');
 
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Completing...';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Completing...';
+    }
 
     const res = await apiRequest(`/inspections/${inspectionId}/complete`, {
       method: 'POST',
       body: { remarks }
     });
 
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-check-all"></i> Complete Inspection';
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-all"></i> Complete Inspection';
+    }
 
     if (res.ok) {
       showToast('Digital inspection completed! You may now approve or reject the application.', 'success');
       App.closeModal();
       if (window.OfficerDashboard) OfficerDashboard.loadDashboard();
       this.loadInspections();
-      // Prompt Officer to make final decision
       Certificates.openApprovalModal(this.activeInspection.application_id);
     } else {
       showToast(res.data.error || 'Failed to complete inspection.', 'danger');
     }
   }
 };
+
 window.Inspections = Inspections;
