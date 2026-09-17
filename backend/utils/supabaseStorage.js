@@ -56,23 +56,43 @@ async function uploadFile(storagePath, buffer, contentType) {
 async function downloadFile(storagePath) {
   ensureConfigured();
 
-  // Private buckets must be downloaded through the authenticated
-  // Storage endpoint. The plain object endpoint is for direct object
-  // operations; private downloads use the authenticated path.
   const safePath = cleanStoragePath(storagePath)
     .split('/')
     .map(encodeURIComponent)
     .join('/');
-  const authenticatedUrl =
-    `${SUPABASE_URL}/storage/v1/object/authenticated/${encodeURIComponent(BUCKET)}/${safePath}`;
 
-  const response = await fetch(authenticatedUrl, {
-    method: 'GET',
+  // Private Supabase buckets should be accessed through a short-lived
+  // signed URL. This avoids treating the service key as an end-user JWT.
+  const signUrl =
+    `${SUPABASE_URL}/storage/v1/object/sign/${encodeURIComponent(BUCKET)}/${safePath}`;
+
+  const signResponse = await fetch(signUrl, {
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      apikey: SUPABASE_SERVICE_ROLE_KEY
-    }
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ expiresIn: 300 })
   });
+
+  if (!signResponse.ok) {
+    const detail = await signResponse.text();
+    const error = new Error(`Supabase Storage signing failed (${signResponse.status}): ${detail}`);
+    error.status = signResponse.status;
+    throw error;
+  }
+
+  const signData = await signResponse.json();
+  if (!signData.signedURL) {
+    throw new Error('Supabase Storage did not return a signed URL.');
+  }
+
+  const signedUrl = signData.signedURL.startsWith('http')
+    ? signData.signedURL
+    : `${SUPABASE_URL}/storage/v1${signData.signedURL}`;
+
+  const response = await fetch(signedUrl, { method: 'GET' });
 
   if (!response.ok) {
     const detail = await response.text();
