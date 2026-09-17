@@ -38,11 +38,17 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Ensure upload folders exist
+// Vercel's deployed filesystem is read-only except for /tmp.
+const uploadRoot = process.env.VERCEL
+  ? path.join('/tmp', 'smartverify-uploads')
+  : path.join(__dirname, 'uploads');
+
 const uploadDirs = [
-  path.join(__dirname, 'uploads', 'documents'),
-  path.join(__dirname, 'uploads', 'inspection-photos'),
-  path.join(__dirname, 'uploads', 'certificates')
+  path.join(uploadRoot, 'documents'),
+  path.join(uploadRoot, 'inspection-photos'),
+  path.join(uploadRoot, 'certificates')
 ];
+
 uploadDirs.forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });

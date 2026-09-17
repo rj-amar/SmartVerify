@@ -2,10 +2,16 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure upload directories exist
-const docsDir = path.join(__dirname, '..', 'uploads', 'documents');
-const photosDir = path.join(__dirname, '..', 'uploads', 'inspection-photos');
-const certsDir = path.join(__dirname, '..', 'uploads', 'certificates');
+// Upload storage
+// Vercel allows temporary file storage only in /tmp.
+// Local development continues to use backend/uploads.
+const uploadRoot = process.env.VERCEL
+  ? path.join('/tmp', 'smartverify-uploads')
+  : path.join(__dirname, '..', 'uploads');
+
+const docsDir = path.join(uploadRoot, 'documents');
+const photosDir = path.join(uploadRoot, 'inspection-photos');
+const certsDir = path.join(uploadRoot, 'certificates');
 
 [docsDir, photosDir, certsDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
