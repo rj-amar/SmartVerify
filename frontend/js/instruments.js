@@ -59,6 +59,89 @@ const Instruments = {
     const container = document.getElementById('instruments-table-container');
     if (!container) return;
 
+    // Owner registry layout fix: keep long values/badges inside their own cells
+    // and allow the action buttons to wrap without affecting neighboring columns.
+    if (!document.getElementById('owner-instruments-table-fix')) {
+      const style = document.createElement('style');
+      style.id = 'owner-instruments-table-fix';
+      style.textContent = `
+        #view-instruments #instruments-table-container .owner-instruments-table {
+          width: 100%;
+          table-layout: fixed;
+        }
+
+        #view-instruments #instruments-table-container .owner-instruments-table th,
+        #view-instruments #instruments-table-container .owner-instruments-table td {
+          vertical-align: middle;
+          overflow: hidden;
+          box-sizing: border-box;
+        }
+
+        #view-instruments #instruments-table-container .owner-instruments-table th:nth-child(1),
+        #view-instruments #instruments-table-container .owner-instruments-table td:nth-child(1) { width: 13%; }
+
+        #view-instruments #instruments-table-container .owner-instruments-table th:nth-child(2),
+        #view-instruments #instruments-table-container .owner-instruments-table td:nth-child(2) { width: 16%; }
+
+        #view-instruments #instruments-table-container .owner-instruments-table th:nth-child(3),
+        #view-instruments #instruments-table-container .owner-instruments-table td:nth-child(3) { width: 16%; }
+
+        #view-instruments #instruments-table-container .owner-instruments-table th:nth-child(4),
+        #view-instruments #instruments-table-container .owner-instruments-table td:nth-child(4) { width: 15%; }
+
+        #view-instruments #instruments-table-container .owner-instruments-table th:nth-child(5),
+        #view-instruments #instruments-table-container .owner-instruments-table td:nth-child(5) { width: 15%; }
+
+        #view-instruments #instruments-table-container .owner-instruments-table th:nth-child(6),
+        #view-instruments #instruments-table-container .owner-instruments-table td:nth-child(6) { width: 10%; }
+
+        #view-instruments #instruments-table-container .owner-instruments-table th:nth-child(7),
+        #view-instruments #instruments-table-container .owner-instruments-table td:nth-child(7) { width: 15%; }
+
+        #view-instruments #instruments-table-container .owner-instruments-table td {
+          overflow-wrap: anywhere;
+          word-break: normal;
+        }
+
+        #view-instruments #instruments-table-container .owner-instruments-table td:nth-child(4) .badge {
+          display: inline-block;
+          max-width: 100%;
+          white-space: normal !important;
+          overflow-wrap: anywhere;
+          word-break: normal;
+          line-height: 1.25;
+          box-sizing: border-box;
+        }
+
+        #view-instruments #instruments-table-container .owner-instrument-actions {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 6px;
+          width: 100%;
+        }
+
+        #view-instruments #instruments-table-container .owner-instrument-actions .btn,
+        #view-instruments #instruments-table-container .owner-instrument-actions .badge {
+          margin: 0 !important;
+          flex: 0 0 auto;
+        }
+
+        @media (max-width: 760px) {
+          #view-instruments #instruments-table-container .table-responsive {
+            overflow-x: auto;
+          }
+
+          #view-instruments #instruments-table-container .owner-instruments-table {
+            min-width: 980px;
+            table-layout: fixed;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     if (this.list.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
@@ -106,6 +189,7 @@ const Instruments = {
             <i class="bi bi-eye"></i> Details
           </button>
           ${this.renderLifecycleActions(inst)}
+          </div>
         </td>
       </tr>
     `).join('');
