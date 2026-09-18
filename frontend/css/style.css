@@ -2428,25 +2428,29 @@ body.internal-mode .modal-footer {
 
 
 /* ============================================================
-   Owner Instruments Registry — desktop fit
-   Keep the complete registry visible without an awkward horizontal
-   scrollbar. Content wraps where necessary; actions remain accessible.
+   Owner Instruments Registry — isolated layout fix
+   IMPORTANT: This block is scoped ONLY to Owner > My Instruments.
+   All other page/modal styles remain unchanged.
    ============================================================ */
+
 #view-instruments #instruments-table-container .table-responsive {
-  overflow-x: hidden;
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 #view-instruments #instruments-table-container .table {
   width: 100%;
-  min-width: 0;
-  table-layout: fixed;
+  min-width: 1180px;
+  table-layout: auto;
 }
 
 #view-instruments #instruments-table-container .table th,
 #view-instruments #instruments-table-container .table td {
-  padding: 11px 10px;
-  min-width: 0;
+  box-sizing: border-box;
+  vertical-align: middle;
 }
 
 #view-instruments #instruments-table-container .table th {
@@ -2455,25 +2459,37 @@ body.internal-mode .modal-footer {
 }
 
 #view-instruments #instruments-table-container .table td {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
-#view-instruments #instruments-table-container .table th:nth-child(1),
-#view-instruments #instruments-table-container .table td:nth-child(1) { width: 14%; }
-#view-instruments #instruments-table-container .table th:nth-child(2),
-#view-instruments #instruments-table-container .table td:nth-child(2) { width: 15%; }
-#view-instruments #instruments-table-container .table th:nth-child(3),
-#view-instruments #instruments-table-container .table td:nth-child(3) { width: 16%; }
-#view-instruments #instruments-table-container .table th:nth-child(4),
-#view-instruments #instruments-table-container .table td:nth-child(4) { width: 14%; }
-#view-instruments #instruments-table-container .table th:nth-child(5),
-#view-instruments #instruments-table-container .table td:nth-child(5) { width: 14%; }
-#view-instruments #instruments-table-container .table th:nth-child(6),
-#view-instruments #instruments-table-container .table td:nth-child(6) { width: 10%; }
-#view-instruments #instruments-table-container .table th:nth-child(7),
-#view-instruments #instruments-table-container .table td:nth-child(7) { width: 17%; }
+/* Accuracy class stays completely inside Capacity & Class. */
+#view-instruments #instruments-table-container .table td:nth-child(4) .badge {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.25;
+  text-align: center;
+  box-sizing: border-box;
+  margin-top: 4px !important;
+}
 
+/* Installation place and purchase date stay visually separated. */
+#view-instruments #instruments-table-container .table td:nth-child(5) > div {
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+
+/* Status badge stays inside the Status column. */
+#view-instruments #instruments-table-container .table td:nth-child(6) .badge {
+  white-space: normal !important;
+  text-align: center;
+  line-height: 1.25;
+}
+
+/* Actions stay inside the Actions column. */
 #view-instruments #instruments-table-container .table td:last-child {
   white-space: normal !important;
   text-align: right;
@@ -2485,10 +2501,32 @@ body.internal-mode .modal-footer {
   margin-bottom: 3px;
 }
 
+/* Give information-heavy columns enough room. */
+#view-instruments #instruments-table-container .table th:nth-child(1),
+#view-instruments #instruments-table-container .table td:nth-child(1) { min-width: 145px; }
+
+#view-instruments #instruments-table-container .table th:nth-child(2),
+#view-instruments #instruments-table-container .table td:nth-child(2) { min-width: 175px; }
+
+#view-instruments #instruments-table-container .table th:nth-child(3),
+#view-instruments #instruments-table-container .table td:nth-child(3) { min-width: 175px; }
+
+#view-instruments #instruments-table-container .table th:nth-child(4),
+#view-instruments #instruments-table-container .table td:nth-child(4) { min-width: 185px; }
+
+#view-instruments #instruments-table-container .table th:nth-child(5),
+#view-instruments #instruments-table-container .table td:nth-child(5) { min-width: 175px; }
+
+#view-instruments #instruments-table-container .table th:nth-child(6),
+#view-instruments #instruments-table-container .table td:nth-child(6) { min-width: 150px; }
+
+#view-instruments #instruments-table-container .table th:nth-child(7),
+#view-instruments #instruments-table-container .table td:nth-child(7) { min-width: 185px; }
+
 @media (max-width: 1100px) {
   #view-instruments #instruments-table-container .table th,
   #view-instruments #instruments-table-container .table td {
-    padding: 9px 8px;
+    padding: 9px 10px;
     font-size: 0.78rem;
   }
 
@@ -2496,17 +2534,6 @@ body.internal-mode .modal-footer {
     font-size: 0.70rem;
   }
 }
-
-@media (max-width: 760px) {
-  #view-instruments #instruments-table-container .table-responsive {
-    overflow-x: auto;
-  }
-
-  #view-instruments #instruments-table-container .table {
-    min-width: 900px;
-  }
-}
-
 
 /* ============================================================
    Owner Registration Modal — Production-safe scroll fix
@@ -2563,3 +2590,4 @@ body.internal-mode .modal-footer {
     padding: 12px 18px;
   }
 }
+
